@@ -1,0 +1,19 @@
+from typing import Optional
+
+from pydantic import BaseModel
+
+
+class SessionBase(BaseModel):
+    linked_user_id: Optional[int] = None
+
+
+class SessionCreate(SessionBase):
+    pass
+
+
+class Session(SessionBase):
+    session_id: str
+    chat_history: Optional[str] = None
+
+    class Config:
+        from_attributes = True
