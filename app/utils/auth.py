@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User
+from app.models.user import Role
 
 load_dotenv()
 
@@ -74,6 +75,6 @@ async def get_current_user(
 
 
 async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "admin":
+    if current_user.role != Role.admin:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user

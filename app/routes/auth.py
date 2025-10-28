@@ -69,6 +69,7 @@ async def login(email: str, password: str, db: AsyncSession = Depends(get_db)):
     # Update last login
     user.last_login = datetime.utcnow()
     await db.commit()
+    await db.refresh(user)  # Refresh to reload all attributes
 
     access_token = create_access_token(data={"sub": user.email})
 

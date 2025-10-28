@@ -1,28 +1,45 @@
 from datetime import datetime
-from typing import List, Optional
+from enum import Enum
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class CategoryEnum(Enum):
+    baby_showers = "Baby Showers"
+    birthdays = "Birthdays"
+    engagements = "Engagements"
 
 
 class GalleryItemBase(BaseModel):
     title: str
     description: Optional[str] = None
-    category: str
-    tags: Optional[str] = None  # JSON string array
+    category: Literal["Baby Showers", "Birthdays", "Engagements"]
+    tags: Optional[List[str]] = None  # JSON array of tags
     display_order: int = 0
     is_featured: bool = False
 
 
-class GalleryItemCreate(GalleryItemBase):
-    image_url: str
-    thumbnail_url: Optional[str] = None
+class GalleryItemCreate(BaseModel):
+    """Schema for creating gallery item with file upload."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: Literal["Baby Showers", "Birthdays", "Engagements"]
+    tags: Optional[List[str]] = Field(None, description="List of tags")
+    display_order: int = Field(0, ge=0)
+    is_featured: bool = False
+
+    class Config:
+        # This allows the schema to work with form data
+        arbitrary_types_allowed = True
 
 
 class GalleryItemUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
-    tags: Optional[str] = None
+    tags: Optional[List[str]] = None
     display_order: Optional[int] = None
     is_featured: Optional[bool] = None
     image_url: Optional[str] = None

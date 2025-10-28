@@ -23,6 +23,7 @@ from app.models import (
     Translation,
     User,
 )
+from app.schemas.gallery_item import CategoryEnum
 from app.utils.auth import get_password_hash
 
 
@@ -195,8 +196,8 @@ async def seed_gallery():
                 description="Beautiful wedding setup with romantic lighting and floral arrangements",
                 image_url="/uploads/gallery/wedding_reception_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/wedding_reception_1_thumb.jpg",
-                category="wedding",
-                tags=json.dumps(["wedding", "elegant", "romantic", "indoor"]),
+                category=CategoryEnum.engagements.value,
+                tags=["wedding", "elegant", "romantic", "indoor"],
                 is_featured=True,
                 display_order=1,
             ),
@@ -205,8 +206,8 @@ async def seed_gallery():
                 description="Professional corporate event with modern setup",
                 image_url="/uploads/gallery/corporate_gala_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/corporate_gala_1_thumb.jpg",
-                category="corporate",
-                tags=json.dumps(["corporate", "professional", "modern"]),
+                category=CategoryEnum.birthdays.value,
+                tags=["corporate", "professional", "modern"],
                 is_featured=True,
                 display_order=2,
             ),
@@ -215,8 +216,8 @@ async def seed_gallery():
                 description="Colorful and vibrant birthday party setup",
                 image_url="/uploads/gallery/birthday_party_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/birthday_party_1_thumb.jpg",
-                category="birthday",
-                tags=json.dumps(["birthday", "colorful", "fun", "outdoor"]),
+                category=CategoryEnum.birthdays.value,
+                tags=["birthday", "colorful", "fun", "outdoor"],
                 is_featured=False,
                 display_order=3,
             ),
@@ -225,8 +226,8 @@ async def seed_gallery():
                 description="Outdoor garden wedding with natural beauty",
                 image_url="/uploads/gallery/garden_wedding_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/garden_wedding_1_thumb.jpg",
-                category="wedding",
-                tags=json.dumps(["wedding", "outdoor", "garden", "natural"]),
+                category=CategoryEnum.engagements.value,
+                tags=["wedding", "outdoor", "garden", "natural"],
                 is_featured=True,
                 display_order=4,
             ),
@@ -235,8 +236,8 @@ async def seed_gallery():
                 description="Intimate anniversary celebration with elegant table settings",
                 image_url="/uploads/gallery/anniversary_dinner_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/anniversary_dinner_1_thumb.jpg",
-                category="anniversary",
-                tags=json.dumps(["anniversary", "intimate", "elegant"]),
+                category=CategoryEnum.engagements.value,
+                tags=["anniversary", "intimate", "elegant"],
                 is_featured=False,
                 display_order=5,
             ),
@@ -462,6 +463,19 @@ async def seed_sample_bookings():
             print("⚠ Bookings already exist, skipping...")
             return
 
+        # Get user IDs (need user_id as it's required)
+        users_result = await db.execute(select(User))
+        users = users_result.scalars().all()
+
+        if not users:
+            print("⚠ No users found, skipping bookings...")
+            return
+
+        # Get client user (or use first user if client doesn't exist)
+        client_user = next(
+            (u for u in users if u.email == "client@example.com"), users[0]
+        )
+
         # Get package IDs
         packages_result = await db.execute(select(Package))
         packages = packages_result.scalars().all()
@@ -472,10 +486,11 @@ async def seed_sample_bookings():
 
         bookings = [
             EventBooking(
+                user_id=client_user.id,  # Required field
                 full_name="Jessica Martinez",
                 email="jessica.martinez@email.com",
                 phone="+1-555-1234",
-                event_type="Wedding",
+                event_type=CategoryEnum.engagements.value,
                 event_date=datetime.utcnow() + timedelta(days=90),
                 expected_guests=120,
                 venue_location="Sunset Garden, Downtown LA",
@@ -487,10 +502,11 @@ async def seed_sample_bookings():
                 status="pending",
             ),
             EventBooking(
+                user_id=client_user.id,  # Required field
                 full_name="Thomas Wilson",
                 email="t.wilson@techcorp.com",
                 phone="+1-555-5678",
-                event_type="Corporate",
+                event_type=CategoryEnum.birthdays.value,
                 event_date=datetime.utcnow() + timedelta(days=45),
                 expected_guests=200,
                 venue_location="Grand Conference Hall, Business District",
@@ -503,10 +519,11 @@ async def seed_sample_bookings():
                 admin_notes="Confirmed on phone. Deposit received.",
             ),
             EventBooking(
+                user_id=client_user.id,  # Required field
                 full_name="Maria Garcia",
                 email="maria.garcia@email.com",
                 phone="+1-555-9012",
-                event_type="Birthday",
+                event_type=CategoryEnum.birthdays.value,
                 event_date=datetime.utcnow() + timedelta(days=30),
                 expected_guests=75,
                 venue_location="Lakeside Pavilion",
@@ -536,45 +553,45 @@ async def seed_translations():
 
         translations = [
             Translation(
-                entity_type="Package",
-                entity_id=1,
+                content_type="Package",
+                object_id=1,
                 field_name="title",
-                language="es",
+                language_code="es",
                 translated_text="Paquete Inicial",
             ),
             Translation(
-                entity_type="Package",
-                entity_id=1,
+                content_type="Package",
+                object_id=1,
                 field_name="description",
-                language="es",
+                language_code="es",
                 translated_text="Perfecto para reuniones pequeñas e íntimas",
             ),
             Translation(
-                entity_type="Package",
-                entity_id=2,
+                content_type="Package",
+                object_id=2,
                 field_name="title",
-                language="es",
+                language_code="es",
                 translated_text="Paquete Clásico",
             ),
             Translation(
-                entity_type="Package",
-                entity_id=2,
+                content_type="Package",
+                object_id=2,
                 field_name="title",
-                language="fr",
+                language_code="fr",
                 translated_text="Forfait Classique",
             ),
             Translation(
-                entity_type="Theme",
-                entity_id=1,
+                content_type="Theme",
+                object_id=1,
                 field_name="name",
-                language="es",
+                language_code="es",
                 translated_text="Jardín Romántico",
             ),
             Translation(
-                entity_type="Theme",
-                entity_id=1,
+                content_type="Theme",
+                object_id=1,
                 field_name="description",
-                language="es",
+                language_code="es",
                 translated_text="Elegante ambiente al aire libre con arreglos florales",
             ),
         ]

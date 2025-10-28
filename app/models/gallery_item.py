@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Text
+from sqlalchemy import JSON, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -19,8 +19,8 @@ class GalleryItem(Base):
     category: Mapped[str] = mapped_column(
         nullable=False, index=True
     )  # e.g., "wedding", "birthday", "corporate"
-    tags: Mapped[str | None] = mapped_column(
-        Text
+    tags: Mapped[list[str] | None] = mapped_column(
+        JSON
     )  # JSON array of tags: ["outdoor", "elegant", "modern"]
     display_order: Mapped[int] = mapped_column(default=0)  # For manual sorting
     is_featured: Mapped[bool] = mapped_column(

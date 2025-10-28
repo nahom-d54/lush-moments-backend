@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("/", response_model=GalleryItemList)
 async def get_gallery_items(
-    category: str = None,
+    category: Literal["Baby Showers", "Birthdays", "Engagements"] = None,
     featured_only: bool = False,
     skip: int = 0,
     limit: int = 50,

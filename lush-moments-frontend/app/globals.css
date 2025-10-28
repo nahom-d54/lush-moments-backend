@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  /* Updated to sage green and cream theme instead of pink */
+  --background: #fafaf8; /* Warm cream background */
+  --foreground: #2d3436; /* Dark charcoal for text */
+  --card: #ffffff;
+  --card-foreground: #2d3436;
+  --popover: #ffffff;
+  --popover-foreground: #2d3436;
+  --primary: #8fae8d; /* Sage green */
+  --primary-foreground: #ffffff; /* White text on sage green */
+  --secondary: #d4af37; /* Rich gold accent */
+  --secondary-foreground: #ffffff; /* White text on gold */
+  --muted: #e8ebe7; /* Light sage */
+  --muted-foreground: #636e72;
+  --accent: #d4af37; /* Gold */
+  --accent-foreground: #ffffff; /* White text on gold */
+  --destructive: #e74c3c;
+  --destructive-foreground: #ffffff;
+  --border: #e8ebe7;
+  --input: #e8ebe7;
+  --ring: #8fae8d;
+  --chart-1: #8fae8d;
+  --chart-2: #d4af37;
+  --chart-3: #a8c5a6;
+  --chart-4: #c9d4c8;
+  --chart-5: #f0e6d2;
+  --radius: 1rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  /* Updated dark mode colors to complement sage green theme */
+  --background: #1a1d1a; /* Dark green-tinted background */
+  --foreground: #f5f5f5; /* Light text */
+  --card: #252825;
+  --card-foreground: #f5f5f5;
+  --popover: #252825;
+  --popover-foreground: #f5f5f5;
+  --primary: #a8c5a6; /* Lighter sage for dark mode */
+  --primary-foreground: #1a1d1a; /* Dark text on sage */
+  --secondary: #f4d03f; /* Brighter gold for dark mode */
+  --secondary-foreground: #1a1d1a;
+  --muted: #353835;
+  --muted-foreground: #a8a8a8;
+  --accent: #f4d03f;
+  --accent-foreground: #1a1d1a;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+  --border: #353835;
+  --input: #353835;
+  --ring: #a8c5a6;
+  --chart-1: #a8c5a6;
+  --chart-2: #f4d03f;
+  --chart-3: #b8d4b6;
+  --chart-4: #d4e4d3;
+  --chart-5: #f5ecd7;
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  /* Adding elegant fonts for Lush Moments */
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-display: "Playfair Display", "Georgia", serif; /* Elegant serif for headers */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

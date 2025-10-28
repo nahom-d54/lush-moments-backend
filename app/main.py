@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
 from app.routes.admin.bookings import router as admin_bookings_router
@@ -18,16 +20,20 @@ from app.routes.chat import router as chat_router
 from app.routes.contact import router as contact_router
 from app.routes.contact_info import router as contact_info_router
 from app.routes.gallery import router as gallery_router
-from app.routes.media import router as media_router
 from app.routes.packages import router as packages_router
 from app.routes.sessions import router as sessions_router
 from app.routes.testimonials import router as testimonials_router
 from app.routes.themes import router as themes_router
 from app.utils.cache import close_redis, get_redis
+from app.utils.image_processing import ensure_upload_directories
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create upload directories
+    ensure_upload_directories()
+    print("✓ Upload directories initialized")
+
     # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -48,6 +54,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Lush Moments Backend", version="0.1.0", lifespan=lifespan)
 
+# Mount static files for uploads
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# CORS Configuration - Allow frontend to make requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # Next.js development server
+        "http://127.0.0.1:3000",
+        # Add production URLs when deploying
+        # "https://yourdomain.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
 # Public routes
 app.include_router(packages_router)
 app.include_router(auth_router)
@@ -56,7 +79,6 @@ app.include_router(testimonials_router)
 app.include_router(bookings_router)
 app.include_router(sessions_router)
 app.include_router(chat_router)
-app.include_router(media_router)
 app.include_router(contact_router)
 app.include_router(contact_info_router)
 app.include_router(gallery_router)
