@@ -1,86 +1,53 @@
-"use client"
+"use client";
 
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { useSearchParams } from "next/navigation"
-import { AnonymousChat } from "@/components/anonymous-chat"
-
-const themes = [
-  {
-    id: "garden-romance",
-    title: "Garden Romance",
-    category: "engagement",
-    image: "/elegant-garden-wedding-decor-with-flowers-and-soft.jpg",
-    colors: ["Blush", "Cream", "Gold"],
-    description: "Elegant garden-inspired décor with soft florals and romantic touches",
-  },
-  {
-    id: "whimsical-clouds",
-    title: "Whimsical Clouds",
-    category: "baby-shower",
-    image: "/soft-cloud-themed-baby-shower-with-pastel-balloons.jpg",
-    colors: ["Sky Blue", "White", "Pink"],
-    description: "Dreamy cloud theme perfect for welcoming your little one",
-  },
-  {
-    id: "golden-celebration",
-    title: "Golden Celebration",
-    category: "birthday",
-    image: "/elegant-gold-and-cream-birthday-party-decor.jpg",
-    colors: ["Gold", "Cream", "Blush"],
-    description: "Luxurious gold accents for a memorable birthday celebration",
-  },
-  {
-    id: "elegant-affair",
-    title: "Elegant Affair",
-    category: "engagement",
-    image: "/elegant-event-decor-setup-with-flowers-and-soft-li.jpg",
-    colors: ["Cream", "Gold", "White"],
-    description: "Sophisticated and timeless décor for your special moment",
-  },
-  {
-    id: "pastel-dreams",
-    title: "Pastel Dreams",
-    category: "baby-shower",
-    image: "/soft-cloud-themed-baby-shower-with-pastel-balloons.jpg",
-    colors: ["Pink", "Lavender", "Mint"],
-    description: "Soft pastel palette creating a sweet and gentle atmosphere",
-  },
-  {
-    id: "vintage-glam",
-    title: "Vintage Glam",
-    category: "birthday",
-    image: "/elegant-gold-and-cream-birthday-party-decor.jpg",
-    colors: ["Rose Gold", "Ivory", "Champagne"],
-    description: "Classic vintage style with modern glamorous touches",
-  },
-]
+import { Navigation } from "@/components/navigation";
+import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { AnonymousChat } from "@/components/anonymous-chat";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import { useGalleryItems } from "@/hooks/use-api-queries";
 
 const categories = [
   { value: "all", label: "All Events" },
-  { value: "baby-shower", label: "Baby Showers" },
-  { value: "birthday", label: "Birthdays" },
-  { value: "engagement", label: "Engagements" },
-]
+  { value: "Baby Showers", label: "Baby Showers" },
+  { value: "Birthdays", label: "Birthdays" },
+  { value: "Engagements", label: "Engagements" },
+];
 
 export default function GalleryPage() {
-  const searchParams = useSearchParams()
-  const typeParam = searchParams.get("type")
-  const [selectedCategory, setSelectedCategory] = useState(typeParam || "all")
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const typeParam = searchParams.get("type");
+  const [selectedCategory, setSelectedCategory] = useState(typeParam || "all");
 
   useEffect(() => {
     if (typeParam) {
-      setSelectedCategory(typeParam)
+      setSelectedCategory(typeParam);
     }
-  }, [typeParam])
+  }, [typeParam]);
 
-  const filteredThemes =
-    selectedCategory === "all" ? themes : themes.filter((theme) => theme.category === selectedCategory)
+  // Use custom hook with TanStack Query - caches for 24 hours
+  const { data, isLoading, error } = useGalleryItems(selectedCategory);
+
+  const galleryItems = data?.items || [];
+  const total = data?.total || 0;
+
+  // Show error toast if fetch fails
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Failed to Load Gallery",
+        description: (error as Error).message || "Could not load gallery items",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   return (
     <div className="min-h-screen">
@@ -99,7 +66,8 @@ export default function GalleryPage() {
               Our Gallery
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Explore our collection of stunning event themes and find the perfect style for your celebration
+              Explore our collection of stunning event themes and find the
+              perfect style for your celebration
             </p>
           </motion.div>
         </div>
@@ -112,9 +80,15 @@ export default function GalleryPage() {
             {categories.map((category) => (
               <Button
                 key={category.value}
-                variant={selectedCategory === category.value ? "default" : "outline"}
+                variant={
+                  selectedCategory === category.value ? "default" : "outline"
+                }
                 onClick={() => setSelectedCategory(category.value)}
-                className={selectedCategory === category.value ? "bg-primary text-primary-foreground" : ""}
+                className={
+                  selectedCategory === category.value
+                    ? "bg-primary text-primary-foreground"
+                    : ""
+                }
               >
                 {category.label}
               </Button>
@@ -126,51 +100,71 @@ export default function GalleryPage() {
       {/* Gallery Grid */}
       <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredThemes.map((theme, index) => (
-              <motion.div
-                key={theme.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-              >
-                <Link href={`/gallery/${theme.id}`}>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+          ) : galleryItems.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-muted-foreground">
+                No gallery items found in this category.
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {galleryItems.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                >
                   <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
                     <div className="relative overflow-hidden">
                       <img
-                        src={theme.image || "/placeholder.svg"}
-                        alt={theme.title}
+                        src={item.thumbnail_url || item.image_url}
+                        alt={item.title}
                         className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute top-4 right-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm capitalize">
-                        {theme.category.replace("-", " ")}
+                        {item.category}
                       </div>
+                      {item.is_featured && (
+                        <div className="absolute top-4 left-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium">
+                          Featured
+                        </div>
+                      )}
                     </div>
                     <CardContent className="p-6 space-y-3">
                       <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {theme.title}
+                        {item.title}
                       </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{theme.description}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {theme.colors.map((color) => (
-                          <span key={color} className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
-                            {color}
-                          </span>
-                        ))}
-                      </div>
-                      <Button variant="link" className="p-0 h-auto text-primary">
-                        View Details →
-                      </Button>
+                      {item.description && (
+                        <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                      {item.tags && item.tags.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                          {item.tags.slice(0, 4).map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {item.tags.length > 4 && (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                              +{item.tags.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          {filteredThemes.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground text-lg">No themes found in this category.</p>
+                </motion.div>
+              ))}
             </div>
           )}
         </div>
@@ -190,9 +184,14 @@ export default function GalleryPage() {
               Love what you see?
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Let's create a custom theme that perfectly matches your vision and celebration style.
+              Let's create a custom theme that perfectly matches your vision and
+              celebration style.
             </p>
-            <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button
+              asChild
+              size="lg"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
               <Link href="/booking">Book Your Event</Link>
             </Button>
           </motion.div>
@@ -203,5 +202,5 @@ export default function GalleryPage() {
 
       <AnonymousChat />
     </div>
-  )
+  );
 }

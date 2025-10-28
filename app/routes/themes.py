@@ -9,17 +9,22 @@ from app.models import Theme
 from app.schemas.theme import Theme as ThemeSchema
 from app.utils.translations import apply_translations
 
-router = APIRouter()
+router = APIRouter(prefix="/themes", tags=["Themes"])
 
 
-@router.get("/themes", response_model=List[ThemeSchema])
+@router.get("/", response_model=List[ThemeSchema])
 async def get_themes(
     db: AsyncSession = Depends(get_db),
     lang: Optional[str] = Query(
         "en", description="Language code (e.g., 'en', 'es', 'fr')"
     ),
+    featured: Optional[bool] = Query(None, description="Filter by featured themes"),
 ):
-    result = await db.execute(select(Theme))
+    result = await db.execute(
+        select(Theme).where(Theme.featured == featured)
+        if featured is not None
+        else select(Theme)
+    )
     themes = result.scalars().all()
 
     # Apply translations if language is not English

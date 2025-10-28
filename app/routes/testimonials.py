@@ -8,10 +8,10 @@ from app.database import get_db
 from app.models import Testimonial
 from app.schemas.testimonial import Testimonial as TestimonialSchema
 
-router = APIRouter()
+router = APIRouter(prefix="/testimonials", tags=["Testimonials"])
 
 
-@router.get("/testimonials", response_model=List[TestimonialSchema])
+@router.get("/", response_model=List[TestimonialSchema])
 async def get_testimonials(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Testimonial))
     testimonials = result.scalars().all()

@@ -17,10 +17,10 @@ from app.schemas.package import (
 from app.utils.cache import get_cached, set_cached
 from app.utils.translations import apply_translations
 
-router = APIRouter()
+router = APIRouter(prefix="/packages", tags=["Packages"])
 
 
-@router.get("/packages", response_model=List[PackageSchema])
+@router.get("/", response_model=List[PackageSchema])
 async def get_packages(
     db: AsyncSession = Depends(get_db),
     lang: Optional[str] = Query(
@@ -61,7 +61,7 @@ async def get_packages(
     return packages
 
 
-@router.get("/packages/{package_id}", response_model=PackageSchema)
+@router.get("/{package_id}", response_model=PackageSchema)
 async def get_package(
     package_id: int,
     db: AsyncSession = Depends(get_db),

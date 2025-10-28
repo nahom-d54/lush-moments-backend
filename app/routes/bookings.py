@@ -13,10 +13,10 @@ from app.schemas.event_booking import (
 from app.utils.auth import get_current_user
 from app.utils.email import send_booking_confirmation
 
-router = APIRouter()
+router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
-@router.post("/bookings", response_model=EventBookingResponse)
+@router.post("/", response_model=EventBookingResponse)
 async def create_booking(
     booking: EventBookingCreate,
     background_tasks: BackgroundTasks,
@@ -68,7 +68,7 @@ async def create_booking(
     )
 
 
-@router.get("/bookings", response_model=list[EventBooking])
+@router.get("/", response_model=list[EventBooking])
 async def get_user_bookings(
     skip: int = 0,
     limit: int = 50,
@@ -92,7 +92,7 @@ async def get_user_bookings(
     return bookings
 
 
-@router.get("/bookings/{booking_id}", response_model=EventBooking)
+@router.get("/{booking_id}", response_model=EventBooking)
 async def get_booking(
     booking_id: int,
     db: AsyncSession = Depends(get_db),

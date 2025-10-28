@@ -338,65 +338,59 @@ async def seed_themes():
             Theme(
                 name="Romantic Garden",
                 description="Elegant outdoor setting with floral arrangements and soft lighting",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/romantic_garden_1.jpg",
-                        "/uploads/themes/romantic_garden_2.jpg",
-                        "/uploads/themes/romantic_garden_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/romantic_garden_1.jpg",
+                    "/uploads/themes/romantic_garden_2.jpg",
+                    "/uploads/themes/romantic_garden_3.jpg",
+                ],
+                featured=True,
             ),
             Theme(
                 name="Modern Minimalist",
                 description="Clean lines, contemporary design, and sophisticated aesthetics",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/modern_minimal_1.jpg",
-                        "/uploads/themes/modern_minimal_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/modern_minimal_1.jpg",
+                    "/uploads/themes/modern_minimal_2.jpg",
+                ],
+                featured=False,
             ),
             Theme(
                 name="Rustic Charm",
                 description="Natural wood elements, vintage decor, and warm ambiance",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/rustic_charm_1.jpg",
-                        "/uploads/themes/rustic_charm_2.jpg",
-                        "/uploads/themes/rustic_charm_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/rustic_charm_1.jpg",
+                    "/uploads/themes/rustic_charm_2.jpg",
+                    "/uploads/themes/rustic_charm_3.jpg",
+                ],
+                featured=True,
             ),
             Theme(
                 name="Classic Elegance",
                 description="Timeless sophistication with luxurious details",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/classic_elegance_1.jpg",
-                        "/uploads/themes/classic_elegance_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/classic_elegance_1.jpg",
+                    "/uploads/themes/classic_elegance_2.jpg",
+                ],
+                featured=False,
             ),
             Theme(
                 name="Tropical Paradise",
                 description="Vibrant colors, exotic flowers, and island-inspired decor",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/tropical_paradise_1.jpg",
-                        "/uploads/themes/tropical_paradise_2.jpg",
-                        "/uploads/themes/tropical_paradise_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/tropical_paradise_1.jpg",
+                    "/uploads/themes/tropical_paradise_2.jpg",
+                    "/uploads/themes/tropical_paradise_3.jpg",
+                ],
+                featured=True,
             ),
             Theme(
                 name="Corporate Professional",
                 description="Sleek and professional setup for business events",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/corporate_prof_1.jpg",
-                        "/uploads/themes/corporate_prof_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/corporate_prof_1.jpg",
+                    "/uploads/themes/corporate_prof_2.jpg",
+                ],
+                featured=False,
             ),
         ]
         db.add_all(themes)

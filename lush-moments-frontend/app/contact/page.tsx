@@ -18,13 +18,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Clock } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { AnonymousChat } from "@/components/anonymous-chat";
-import { contactApi } from "@/lib/api";
+import { useContactInfo, useSubmitContact } from "@/hooks/use-api-queries";
 
 // Zod schema for contact form
 const contactSchema = z.object({
@@ -40,6 +40,10 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 export default function ContactPage() {
   const { toast } = useToast();
 
+  // Use TanStack Query hooks - caches for 24 hours
+  const { data: contactInfo, isLoading: loadingInfo } = useContactInfo();
+  const submitContactMutation = useSubmitContact();
+
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -53,7 +57,7 @@ export default function ContactPage() {
 
   const onSubmit = async (data: ContactFormValues) => {
     try {
-      await contactApi.submit({
+      await submitContactMutation.mutateAsync({
         full_name: data.name,
         email: data.email,
         phone_number: data.phone || undefined,
@@ -219,9 +223,9 @@ export default function ContactPage() {
                         type="submit"
                         size="lg"
                         className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                        disabled={form.formState.isSubmitting}
+                        disabled={submitContactMutation.isPending}
                       >
-                        {form.formState.isSubmitting
+                        {submitContactMutation.isPending
                           ? "Sending..."
                           : "Send Message"}
                       </Button>
@@ -244,66 +248,86 @@ export default function ContactPage() {
                     <h3 className="font-semibold text-foreground mb-4">
                       Contact Information
                     </h3>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Mail className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Email
-                          </p>
-                          <a
-                            href="mailto:hello@lushmoments.com"
-                            className="text-sm text-muted-foreground hover:text-primary"
-                          >
-                            hello@lushmoments.com
-                          </a>
+                    {loadingInfo ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <Mail className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              Email
+                            </p>
+                            <a
+                              href={`mailto:${
+                                contactInfo?.email || "hello@lushmoments.com"
+                              }`}
+                              className="text-sm text-muted-foreground hover:text-primary"
+                            >
+                              {contactInfo?.email || "hello@lushmoments.com"}
+                            </a>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Phone className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              Phone
+                            </p>
+                            <a
+                              href={`tel:${
+                                contactInfo?.phone || "+15551234567"
+                              }`}
+                              className="text-sm text-muted-foreground hover:text-primary"
+                            >
+                              {contactInfo?.phone || "+1 (555) 123-4567"}
+                            </a>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              Location
+                            </p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-line">
+                              {contactInfo?.location ||
+                                "123 Event Plaza\nSuite 456\nCity, State 12345"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              Business Hours
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {contactInfo?.business_hours ? (
+                                Object.entries(contactInfo.business_hours).map(
+                                  ([day, hours]) => (
+                                    <span key={day}>
+                                      {day}: {hours}
+                                      <br />
+                                    </span>
+                                  )
+                                )
+                              ) : (
+                                <>
+                                  Monday - Friday: 9am - 6pm
+                                  <br />
+                                  Saturday: 10am - 4pm
+                                  <br />
+                                  Sunday: Closed
+                                </>
+                              )}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <Phone className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Phone
-                          </p>
-                          <a
-                            href="tel:+15551234567"
-                            className="text-sm text-muted-foreground hover:text-primary"
-                          >
-                            +1 (555) 123-4567
-                          </a>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Location
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            123 Event Plaza
-                            <br />
-                            Suite 456
-                            <br />
-                            City, State 12345
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Business Hours
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Monday - Friday: 9am - 6pm
-                            <br />
-                            Saturday: 10am - 4pm
-                            <br />
-                            Sunday: Closed
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

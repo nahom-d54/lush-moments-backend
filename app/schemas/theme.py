@@ -6,7 +6,8 @@ from pydantic import BaseModel
 class ThemeBase(BaseModel):
     name: str
     description: Optional[str] = None
-    gallery_images: Optional[str] = None
+    gallery_images: Optional[list[str]] = None
+    featured: bool
 
 
 class ThemeCreate(ThemeBase):

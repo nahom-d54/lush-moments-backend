@@ -13,7 +13,7 @@ from app.schemas.contact_info import (
 )
 from app.utils.auth import get_current_admin
 
-router = APIRouter(prefix="/admin/contact-info", tags=["Admin - Contact Info"])
+router = APIRouter(prefix="/admin/contact-info", tags=["Contact Info"])
 
 
 @router.post("/", response_model=ContactInfoSchema)

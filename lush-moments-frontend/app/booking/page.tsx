@@ -1,65 +1,141 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion } from "framer-motion"
-import { Calendar, MapPin, Users, Sparkles } from "lucide-react"
-import { useState } from "react"
-import { useToast } from "@/hooks/use-toast"
-import { AnonymousChat } from "@/components/anonymous-chat"
+import { Navigation } from "@/components/navigation";
+import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { motion } from "framer-motion";
+import { Calendar, MapPin, Users, Sparkles, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { AnonymousChat } from "@/components/anonymous-chat";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter, useSearchParams } from "next/navigation";
+import { bookingApi, packageApi, type Package } from "@/lib/api";
 
 export default function BookingPage() {
-  const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const packageParam = searchParams.get("package");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loadingPackages, setLoadingPackages] = useState(true);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
     eventType: "",
     eventDate: "",
     guestCount: "",
     venue: "",
-    packageType: "",
+    packageType: packageParam || "",
     message: "",
-  })
+  });
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const data = await packageApi.getAll();
+        setPackages(data);
+      } catch (error) {
+        console.error("Failed to load packages:", error);
+      } finally {
+        setLoadingPackages(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      }));
+    }
+  }, [user]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const bookingData = {
+        event_type: formData.eventType,
+        event_date: formData.eventDate,
+        expected_guests: parseInt(formData.guestCount),
+        venue_location: formData.venue,
+        package_id: formData.packageType
+          ? parseInt(formData.packageType)
+          : undefined,
+        additional_details: formData.message || undefined,
+        // If user is not authenticated, include contact details
+        ...(!user && {
+          full_name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        }),
+      };
 
-    toast({
-      title: "Booking Request Received!",
-      description: "We'll get back to you within 24 hours to discuss your event details.",
-    })
+      const response = await bookingApi.create(bookingData);
 
-    setIsSubmitting(false)
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      eventType: "",
-      eventDate: "",
-      guestCount: "",
-      venue: "",
-      packageType: "",
-      message: "",
-    })
-  }
+      toast({
+        title: "Booking Request Received!",
+        description:
+          "We'll get back to you within 24 hours to discuss your event details.",
+      });
+
+      // Reset form
+      setFormData({
+        name: user?.name || "",
+        email: user?.email || "",
+        phone: user?.phone || "",
+        eventType: "",
+        eventDate: "",
+        guestCount: "",
+        venue: "",
+        packageType: "",
+        message: "",
+      });
+
+      // Redirect to bookings page if authenticated
+      if (user) {
+        setTimeout(() => router.push("/my-bookings"), 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Booking Failed",
+        description:
+          error.message ||
+          "Could not submit booking request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -78,7 +154,8 @@ export default function BookingPage() {
               Book Your Event
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Tell us about your celebration and we'll create a custom décor package that brings your vision to life.
+              Tell us about your celebration and we'll create a custom décor
+              package that brings your vision to life.
             </p>
           </motion.div>
         </div>
@@ -97,21 +174,29 @@ export default function BookingPage() {
             >
               <Card>
                 <CardHeader>
-                  <h2 className="text-2xl font-[family-name:var(--font-display)]">Event Details</h2>
-                  <p className="text-muted-foreground">Fill out the form below and we'll get back to you shortly</p>
+                  <h2 className="text-2xl font-[family-name:var(--font-display)]">
+                    Event Details
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Fill out the form below and we'll get back to you shortly
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Personal Information */}
                     <div className="space-y-4">
-                      <h3 className="font-semibold text-foreground">Your Information</h3>
+                      <h3 className="font-semibold text-foreground">
+                        Your Information
+                      </h3>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">Full Name *</Label>
                           <Input
                             id="name"
                             value={formData.name}
-                            onChange={(e) => handleChange("name", e.target.value)}
+                            onChange={(e) =>
+                              handleChange("name", e.target.value)
+                            }
                             placeholder="John Doe"
                             required
                           />
@@ -122,7 +207,9 @@ export default function BookingPage() {
                             id="email"
                             type="email"
                             value={formData.email}
-                            onChange={(e) => handleChange("email", e.target.value)}
+                            onChange={(e) =>
+                              handleChange("email", e.target.value)
+                            }
                             placeholder="john@example.com"
                             required
                           />
@@ -134,7 +221,9 @@ export default function BookingPage() {
                           id="phone"
                           type="tel"
                           value={formData.phone}
-                          onChange={(e) => handleChange("phone", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("phone", e.target.value)
+                          }
                           placeholder="+1 (555) 123-4567"
                           required
                         />
@@ -143,23 +232,35 @@ export default function BookingPage() {
 
                     {/* Event Information */}
                     <div className="space-y-4">
-                      <h3 className="font-semibold text-foreground">Event Information</h3>
+                      <h3 className="font-semibold text-foreground">
+                        Event Information
+                      </h3>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="eventType">Event Type *</Label>
                           <Select
                             value={formData.eventType}
-                            onValueChange={(value) => handleChange("eventType", value)}
+                            onValueChange={(value) =>
+                              handleChange("eventType", value)
+                            }
                           >
                             <SelectTrigger id="eventType">
                               <SelectValue placeholder="Select event type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="baby-shower">Baby Shower</SelectItem>
-                              <SelectItem value="birthday">Birthday Party</SelectItem>
-                              <SelectItem value="engagement">Engagement Party</SelectItem>
+                              <SelectItem value="baby-shower">
+                                Baby Shower
+                              </SelectItem>
+                              <SelectItem value="birthday">
+                                Birthday Party
+                              </SelectItem>
+                              <SelectItem value="engagement">
+                                Engagement Party
+                              </SelectItem>
                               <SelectItem value="wedding">Wedding</SelectItem>
-                              <SelectItem value="corporate">Corporate Event</SelectItem>
+                              <SelectItem value="corporate">
+                                Corporate Event
+                              </SelectItem>
                               <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>
@@ -170,19 +271,25 @@ export default function BookingPage() {
                             id="eventDate"
                             type="date"
                             value={formData.eventDate}
-                            onChange={(e) => handleChange("eventDate", e.target.value)}
+                            onChange={(e) =>
+                              handleChange("eventDate", e.target.value)
+                            }
                             required
                           />
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="guestCount">Expected Guest Count *</Label>
+                          <Label htmlFor="guestCount">
+                            Expected Guest Count *
+                          </Label>
                           <Input
                             id="guestCount"
                             type="number"
                             value={formData.guestCount}
-                            onChange={(e) => handleChange("guestCount", e.target.value)}
+                            onChange={(e) =>
+                              handleChange("guestCount", e.target.value)
+                            }
                             placeholder="50"
                             min="1"
                             required
@@ -192,16 +299,32 @@ export default function BookingPage() {
                           <Label htmlFor="packageType">Preferred Package</Label>
                           <Select
                             value={formData.packageType}
-                            onValueChange={(value) => handleChange("packageType", value)}
+                            onValueChange={(value) =>
+                              handleChange("packageType", value)
+                            }
+                            disabled={loadingPackages}
                           >
                             <SelectTrigger id="packageType">
-                              <SelectValue placeholder="Select package" />
+                              <SelectValue
+                                placeholder={
+                                  loadingPackages
+                                    ? "Loading packages..."
+                                    : "Select package"
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="essential">Essential</SelectItem>
-                              <SelectItem value="deluxe">Deluxe</SelectItem>
-                              <SelectItem value="signature">Signature</SelectItem>
-                              <SelectItem value="custom">Custom Package</SelectItem>
+                              {packages.map((pkg) => (
+                                <SelectItem
+                                  key={pkg.id}
+                                  value={pkg.id.toString()}
+                                >
+                                  {pkg.title} - ${pkg.price.toLocaleString()}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="custom">
+                                Custom Package
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -211,7 +334,9 @@ export default function BookingPage() {
                         <Input
                           id="venue"
                           value={formData.venue}
-                          onChange={(e) => handleChange("venue", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("venue", e.target.value)
+                          }
                           placeholder="123 Main St, City, State"
                           required
                         />
@@ -220,13 +345,19 @@ export default function BookingPage() {
 
                     {/* Additional Details */}
                     <div className="space-y-4">
-                      <h3 className="font-semibold text-foreground">Additional Details</h3>
+                      <h3 className="font-semibold text-foreground">
+                        Additional Details
+                      </h3>
                       <div className="space-y-2">
-                        <Label htmlFor="message">Tell us about your vision</Label>
+                        <Label htmlFor="message">
+                          Tell us about your vision
+                        </Label>
                         <Textarea
                           id="message"
                           value={formData.message}
-                          onChange={(e) => handleChange("message", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("message", e.target.value)
+                          }
                           placeholder="Share any specific themes, colors, or ideas you have in mind..."
                           rows={5}
                         />
@@ -239,7 +370,9 @@ export default function BookingPage() {
                       className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "Submitting..." : "Submit Booking Request"}
+                      {isSubmitting
+                        ? "Submitting..."
+                        : "Submit Booking Request"}
                     </Button>
                   </form>
                 </CardContent>
@@ -258,25 +391,33 @@ export default function BookingPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-foreground mb-1">Book in Advance</h3>
+                      <h3 className="font-semibold text-foreground mb-1">
+                        Book in Advance
+                      </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        We recommend booking 4-6 weeks ahead for best availability
+                        We recommend booking 4-6 weeks ahead for best
+                        availability
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Users className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-foreground mb-1">Free Consultation</h3>
+                      <h3 className="font-semibold text-foreground mb-1">
+                        Free Consultation
+                      </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Every booking includes a complimentary design consultation
+                        Every booking includes a complimentary design
+                        consultation
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-foreground mb-1">Service Area</h3>
+                      <h3 className="font-semibold text-foreground mb-1">
+                        Service Area
+                      </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         We serve the greater metro area and surrounding regions
                       </p>
@@ -285,9 +426,12 @@ export default function BookingPage() {
                   <div className="flex items-start gap-3">
                     <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-foreground mb-1">Custom Packages</h3>
+                      <h3 className="font-semibold text-foreground mb-1">
+                        Custom Packages
+                      </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        All packages can be customized to fit your vision and budget
+                        All packages can be customized to fit your vision and
+                        budget
                       </p>
                     </div>
                   </div>
@@ -298,9 +442,14 @@ export default function BookingPage() {
                 <CardContent className="p-6 space-y-3">
                   <h3 className="font-semibold text-foreground">Need Help?</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Have questions about our services or packages? We're here to help!
+                    Have questions about our services or packages? We're here to
+                    help!
                   </p>
-                  <Button variant="outline" className="w-full bg-transparent" asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full bg-transparent"
+                    asChild
+                  >
                     <a href="/contact">Contact Us</a>
                   </Button>
                 </CardContent>
@@ -313,5 +462,5 @@ export default function BookingPage() {
       <Footer />
       <AnonymousChat />
     </div>
-  )
+  );
 }

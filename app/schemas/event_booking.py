@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
+from app.models.event_booking import BookingStatus
+
 
 class EventBookingBase(BaseModel):
     # Event Information
@@ -33,7 +35,7 @@ class EventBookingCreate(EventBookingBase):
 class EventBookingUpdate(BaseModel):
     """Schema for updating booking (admin can update status and notes)"""
 
-    status: Optional[str] = None
+    status: Optional[BookingStatus] = None
     admin_notes: Optional[str] = None
 
 
@@ -45,7 +47,7 @@ class EventBooking(EventBookingBase):
     full_name: str
     email: str
     phone: str
-    status: str
+    status: BookingStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
     admin_notes: Optional[str] = None

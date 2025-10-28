@@ -7,7 +7,7 @@ class ContactInfoBase(BaseModel):
     email: EmailStr
     phone: str
     location: str
-    business_hours: str  # JSON string
+    business_hours: dict[str, str]  # JSON string
     secondary_phone: Optional[str] = None
     secondary_email: Optional[EmailStr] = None
     facebook_url: Optional[str] = None

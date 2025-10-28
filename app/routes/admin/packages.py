@@ -12,7 +12,7 @@ from app.schemas.package import PackageCreate, PackageUpdate
 from app.utils.auth import get_current_admin
 from app.utils.cache import clear_pattern
 
-router = APIRouter(prefix="/admin/packages", tags=["admin packages"])
+router = APIRouter(prefix="/admin/packages", tags=["Packages"])
 
 
 @router.get("/", response_model=List[PackageSchema])

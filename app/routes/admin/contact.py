@@ -12,7 +12,7 @@ from app.schemas.contact_message import (
 )
 from app.utils.auth import get_current_admin
 
-router = APIRouter(prefix="/admin/contact", tags=["Admin - Contact"])
+router = APIRouter(prefix="/admin/contact", tags=["Contact"])
 
 
 @router.get("/messages", response_model=list[ContactMessageSchema])

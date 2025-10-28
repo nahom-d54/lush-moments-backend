@@ -6,18 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import EventBooking
+from app.models.event_booking import BookingStatus
 from app.schemas.event_booking import EventBooking as EventBookingSchema
 from app.schemas.event_booking import EventBookingCreate, EventBookingUpdate
 from app.utils.auth import get_current_admin
 
-router = APIRouter(prefix="/admin/bookings", tags=["Admin - Bookings"])
+router = APIRouter(prefix="/admin/bookings", tags=["Bookings"])
 
 
 @router.get("/", response_model=List[EventBookingSchema])
 async def get_all_bookings(
     skip: int = 0,
     limit: int = 50,
-    status: str = None,
+    status: BookingStatus = None,
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):

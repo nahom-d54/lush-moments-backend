@@ -1,4 +1,6 @@
-from sqlalchemy import Text
+from typing import Dict
+
+from sqlalchemy import JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -15,8 +17,8 @@ class ContactInfo(Base):
     location: Mapped[str] = mapped_column(
         Text, nullable=False
     )  # Full address with city, state, zip
-    business_hours: Mapped[str] = mapped_column(
-        Text, nullable=False
+    business_hours: Mapped[Dict[str, str]] = mapped_column(
+        JSON, nullable=False
     )  # JSON: {"monday": "9:00 AM - 6:00 PM", ...}
     secondary_phone: Mapped[str | None]
     secondary_email: Mapped[str | None]

@@ -11,7 +11,7 @@ from app.schemas.gallery_item import GalleryItem as GalleryItemSchema
 from app.utils.auth import get_current_admin
 from app.utils.image_processing import delete_gallery_image, save_gallery_image
 
-router = APIRouter(prefix="/admin/gallery", tags=["Admin - Gallery"])
+router = APIRouter(prefix="/admin/gallery", tags=["Gallery"])
 
 
 @router.post("/", response_model=List[GalleryItemSchema], status_code=201)

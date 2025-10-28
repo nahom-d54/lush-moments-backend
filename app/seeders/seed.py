@@ -196,7 +196,7 @@ async def seed_gallery():
                 image_url="/uploads/gallery/wedding_reception_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/wedding_reception_1_thumb.jpg",
                 category="wedding",
-                tags=json.dumps(["wedding", "elegant", "romantic", "indoor"]),
+                tags=["wedding", "elegant", "romantic", "indoor"],
                 is_featured=True,
                 display_order=1,
             ),
@@ -206,7 +206,7 @@ async def seed_gallery():
                 image_url="/uploads/gallery/corporate_gala_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/corporate_gala_1_thumb.jpg",
                 category="corporate",
-                tags=json.dumps(["corporate", "professional", "modern"]),
+                tags=["corporate", "professional", "modern"],
                 is_featured=True,
                 display_order=2,
             ),
@@ -216,7 +216,7 @@ async def seed_gallery():
                 image_url="/uploads/gallery/birthday_party_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/birthday_party_1_thumb.jpg",
                 category="birthday",
-                tags=json.dumps(["birthday", "colorful", "fun", "outdoor"]),
+                tags=["birthday", "colorful", "fun", "outdoor"],
                 is_featured=False,
                 display_order=3,
             ),
@@ -226,7 +226,7 @@ async def seed_gallery():
                 image_url="/uploads/gallery/garden_wedding_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/garden_wedding_1_thumb.jpg",
                 category="wedding",
-                tags=json.dumps(["wedding", "outdoor", "garden", "natural"]),
+                tags=["wedding", "outdoor", "garden", "natural"],
                 is_featured=True,
                 display_order=4,
             ),
@@ -236,7 +236,7 @@ async def seed_gallery():
                 image_url="/uploads/gallery/anniversary_dinner_1.jpg",
                 thumbnail_url="/uploads/gallery/thumbs/anniversary_dinner_1_thumb.jpg",
                 category="anniversary",
-                tags=json.dumps(["anniversary", "intimate", "elegant"]),
+                tags=["anniversary", "intimate", "elegant"],
                 is_featured=False,
                 display_order=5,
             ),
@@ -337,65 +337,53 @@ async def seed_themes():
             Theme(
                 name="Romantic Garden",
                 description="Elegant outdoor setting with floral arrangements and soft lighting",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/romantic_garden_1.jpg",
-                        "/uploads/themes/romantic_garden_2.jpg",
-                        "/uploads/themes/romantic_garden_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/romantic_garden_1.jpg",
+                    "/uploads/themes/romantic_garden_2.jpg",
+                    "/uploads/themes/romantic_garden_3.jpg",
+                ],
             ),
             Theme(
                 name="Modern Minimalist",
                 description="Clean lines, contemporary design, and sophisticated aesthetics",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/modern_minimal_1.jpg",
-                        "/uploads/themes/modern_minimal_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/modern_minimal_1.jpg",
+                    "/uploads/themes/modern_minimal_2.jpg",
+                ],
             ),
             Theme(
                 name="Rustic Charm",
                 description="Natural wood elements, vintage decor, and warm ambiance",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/rustic_charm_1.jpg",
-                        "/uploads/themes/rustic_charm_2.jpg",
-                        "/uploads/themes/rustic_charm_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/rustic_charm_1.jpg",
+                    "/uploads/themes/rustic_charm_2.jpg",
+                    "/uploads/themes/rustic_charm_3.jpg",
+                ],
             ),
             Theme(
                 name="Classic Elegance",
                 description="Timeless sophistication with luxurious details",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/classic_elegance_1.jpg",
-                        "/uploads/themes/classic_elegance_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/classic_elegance_1.jpg",
+                    "/uploads/themes/classic_elegance_2.jpg",
+                ],
             ),
             Theme(
                 name="Tropical Paradise",
                 description="Vibrant colors, exotic flowers, and island-inspired decor",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/tropical_paradise_1.jpg",
-                        "/uploads/themes/tropical_paradise_2.jpg",
-                        "/uploads/themes/tropical_paradise_3.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/tropical_paradise_1.jpg",
+                    "/uploads/themes/tropical_paradise_2.jpg",
+                    "/uploads/themes/tropical_paradise_3.jpg",
+                ],
             ),
             Theme(
                 name="Corporate Professional",
                 description="Sleek and professional setup for business events",
-                gallery_images=json.dumps(
-                    [
-                        "/uploads/themes/corporate_prof_1.jpg",
-                        "/uploads/themes/corporate_prof_2.jpg",
-                    ]
-                ),
+                gallery_images=[
+                    "/uploads/themes/corporate_prof_1.jpg",
+                    "/uploads/themes/corporate_prof_2.jpg",
+                ],
             ),
         ]
         db.add_all(themes)
@@ -479,7 +467,9 @@ async def seed_sample_bookings():
                 event_date=datetime.utcnow() + timedelta(days=90),
                 expected_guests=120,
                 venue_location="Sunset Garden, Downtown LA",
-                package_id=packages[1].id if len(packages) > 1 else None,  # Classic Package
+                package_id=packages[1].id
+                if len(packages) > 1
+                else None,  # Classic Package
                 additional_details="Looking for outdoor ceremony with indoor reception. Prefer romantic garden theme.",
                 special_requests="Vegetarian menu options needed for 20 guests",
                 status="pending",
@@ -492,7 +482,9 @@ async def seed_sample_bookings():
                 event_date=datetime.utcnow() + timedelta(days=45),
                 expected_guests=200,
                 venue_location="Grand Conference Hall, Business District",
-                package_id=packages[2].id if len(packages) > 2 else None,  # Premium Package
+                package_id=packages[2].id
+                if len(packages) > 2
+                else None,  # Premium Package
                 additional_details="Annual company gala dinner with awards ceremony",
                 special_requests="Need AV equipment for presentations and projection screens",
                 status="confirmed",
@@ -506,7 +498,9 @@ async def seed_sample_bookings():
                 event_date=datetime.utcnow() + timedelta(days=30),
                 expected_guests=75,
                 venue_location="Lakeside Pavilion",
-                package_id=packages[0].id if len(packages) > 0 else None,  # Starter Package
+                package_id=packages[0].id
+                if len(packages) > 0
+                else None,  # Starter Package
                 additional_details="Sweet 16 birthday party with DJ and dance floor",
                 special_requests="Custom cake with photo design",
                 status="pending",

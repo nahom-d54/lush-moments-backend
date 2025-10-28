@@ -4,6 +4,7 @@ import { Geist, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { QueryProvider } from "@/contexts/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -30,10 +31,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased ${_playfairDisplay.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
         <Analytics />
       </body>
