@@ -12,6 +12,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - lush_moments_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -25,6 +27,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - lush_moments_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -51,8 +55,14 @@ services:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+    networks:
+      - lush_moments_network
     restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  lush_moments_network:
+    driver: bridge
