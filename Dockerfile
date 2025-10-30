@@ -45,13 +45,19 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 
-# Create uploads directory structure with proper permissions
-RUN mkdir -p uploads/gallery uploads/gallery/thumbs uploads/testimonials uploads/themes && \
-    chown -R app:app uploads
+# Copy entrypoint script
+COPY --chown=app:app docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Activate the virtual environment and switch to the non-root user
 ENV PATH="/opt/venv/bin:$PATH"
 USER app
+
+# Set entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+# Default command
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Expose port
 EXPOSE 8000
