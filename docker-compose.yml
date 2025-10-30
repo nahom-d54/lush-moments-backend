@@ -37,7 +37,7 @@ services:
     build: .
     container_name: lush_moments_app
     ports:
-      - "8000:8000"
+      - 8000
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db/lush_moments
       REDIS_URL: redis://redis:6379
@@ -63,4 +63,4 @@ volumes:
 
 networks:
   lush_moments_network:
-    driver: bridge
+    driver: bridg
