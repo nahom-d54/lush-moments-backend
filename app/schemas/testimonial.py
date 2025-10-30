@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -15,7 +16,7 @@ class TestimonialCreate(TestimonialBase):
 
 
 class Testimonial(TestimonialBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True

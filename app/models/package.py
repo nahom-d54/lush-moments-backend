@@ -1,3 +1,5 @@
+from uuid import UUID, uuid4
+
 from sqlalchemy import Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -7,7 +9,7 @@ from app.database import Base
 class Package(Base):
     __tablename__ = "packages"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
     title: Mapped[str] = mapped_column(nullable=False)  # Changed from 'name' to 'title'
     description: Mapped[str | None] = mapped_column(Text)
     price: Mapped[float] = mapped_column(nullable=False)

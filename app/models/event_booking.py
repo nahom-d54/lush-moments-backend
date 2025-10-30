@@ -1,5 +1,6 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -17,10 +18,10 @@ class BookingStatus(enum.Enum):
 class EventBooking(Base):
     __tablename__ = "event_bookings"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
 
     # User Reference (Required - authenticated users only)
-    user_id: Mapped[int] = mapped_column(
+    user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id"), nullable=False, index=True
     )
 
@@ -49,13 +50,16 @@ class EventBooking(Base):
         Enum(BookingStatus), default=BookingStatus.pending, nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime, onupdate=datetime.utcnow
+        DateTime, onupdate=lambda: datetime.now(timezone.utc)
     )
     admin_notes: Mapped[str | None] = mapped_column(Text)  # Internal notes for admins
 
     # Relationships
     user = relationship("User", back_populates="bookings")
     package = relationship("Package")
+    booking_enhancements = relationship(
+        "BookingEnhancement", back_populates="booking", cascade="all, delete-orphan"
+    )

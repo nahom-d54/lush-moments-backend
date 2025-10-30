@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -13,8 +14,8 @@ class PackageItemCreate(PackageItemBase):
 
 
 class PackageItem(PackageItemBase):
-    id: int
-    package_id: int
+    id: UUID
+    package_id: UUID
 
     class Config:
         from_attributes = True
@@ -42,7 +43,7 @@ class PackageUpdate(BaseModel):
 
 
 class Package(PackageBase):
-    id: int
+    id: UUID
     items: List[PackageItem] = []
 
     class Config:

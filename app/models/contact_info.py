@@ -1,4 +1,5 @@
 from typing import Dict
+from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -11,7 +12,7 @@ class ContactInfo(Base):
 
     __tablename__ = "contact_info"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
     email: Mapped[str] = mapped_column(nullable=False)
     phone: Mapped[str] = mapped_column(nullable=False)
     location: Mapped[str] = mapped_column(

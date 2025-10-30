@@ -1,0 +1,1 @@
+[] use langchain, lang-graph, gemini to integrate with the website add tools to fetch from database to answer questions about what we offer and stuff like that

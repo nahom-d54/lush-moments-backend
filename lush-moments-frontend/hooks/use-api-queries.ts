@@ -4,12 +4,18 @@ import {
   packageApi,
   bookingApi,
   contactApi,
+  testimonialsApi,
+  faqApi,
+  enhancementApi,
   type GalleryItem,
   type Package,
   type Booking,
   type CreateBookingData,
   type ContactMessage,
   type ContactInfo,
+  type Testimonial,
+  type FAQ,
+  type PackageEnhancement,
 } from "@/lib/api";
 
 // Query Keys
@@ -33,6 +39,21 @@ export const queryKeys = {
   contact: {
     info: ["contact", "info"] as const,
   },
+  testimonials: {
+    all: ["testimonials"] as const,
+    featured: ["testimonials", "featured"] as const,
+    detail: (id: number) => ["testimonials", id] as const,
+  },
+  faqs: {
+    all: ["faqs"] as const,
+    list: (category?: string) => ["faqs", category || "all"] as const,
+    categories: ["faqs", "categories"] as const,
+  },
+  enhancements: {
+    all: ["enhancements"] as const,
+    list: (category?: string) => ["enhancements", category || "all"] as const,
+    categories: ["enhancements", "categories"] as const,
+  },
 };
 
 // Gallery Hooks
@@ -43,6 +64,19 @@ export function useGalleryItems(category?: string) {
       galleryApi.getAll({
         category: category === "all" ? undefined : category,
         limit: 50,
+      }),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
+
+export function useFeaturedThemes() {
+  return useQuery({
+    queryKey: ["gallery", "featured"],
+    queryFn: () =>
+      galleryApi.getAll({
+        featured_only: true,
+        limit: 3,
       }),
     staleTime: 24 * 60 * 60 * 1000, // 24 hours
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
@@ -100,7 +134,7 @@ export function useMyBookings(skip = 0, limit = 50) {
 export function useBooking(id: number) {
   return useQuery({
     queryKey: queryKeys.bookings.detail(id),
-    queryFn: () => bookingApi.getBooking(id),
+    queryFn: () => bookingApi.getBooking(String(id)),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!id,
@@ -133,5 +167,84 @@ export function useContactInfo() {
 export function useSubmitContact() {
   return useMutation({
     mutationFn: (data: ContactMessage) => contactApi.submit(data),
+  });
+}
+
+// Testimonials Hooks
+export function useTestimonials(limit = 10) {
+  return useQuery({
+    queryKey: queryKeys.testimonials.all,
+    queryFn: () => testimonialsApi.getAll({ limit }),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
+
+export function useFeaturedTestimonials() {
+  return useQuery({
+    queryKey: queryKeys.testimonials.featured,
+    queryFn: () =>
+      testimonialsApi.getAll({
+        featured_only: true,
+        limit: 3,
+      }),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
+
+export function useTestimonial(id: number) {
+  return useQuery({
+    queryKey: queryKeys.testimonials.detail(id),
+    queryFn: () => testimonialsApi.getById(id),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    enabled: !!id,
+  });
+}
+
+// FAQ Hooks
+export function useFAQs(category?: string) {
+  return useQuery({
+    queryKey: queryKeys.faqs.list(category),
+    queryFn: () =>
+      faqApi.getAll({
+        category: category === "all" ? undefined : category,
+        active_only: true,
+      }),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
+
+export function useFAQCategories() {
+  return useQuery({
+    queryKey: queryKeys.faqs.categories,
+    queryFn: () => faqApi.getCategories(),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  });
+}
+
+// Package Enhancement Hooks
+export function useEnhancements(category?: string) {
+  return useQuery({
+    queryKey: queryKeys.enhancements.list(category),
+    queryFn: () =>
+      enhancementApi.getAll({
+        category: category === "all" ? undefined : category,
+        available_only: true,
+      }),
+    staleTime: 60 * 60 * 1000, // 1 hour
+    gcTime: 60 * 60 * 1000, // 1 hour
+  });
+}
+
+export function useEnhancementCategories() {
+  return useQuery({
+    queryKey: queryKeys.enhancements.categories,
+    queryFn: () => enhancementApi.getCategories(),
+    staleTime: 60 * 60 * 1000, // 1 hour
+    gcTime: 60 * 60 * 1000, // 1 hour
   });
 }

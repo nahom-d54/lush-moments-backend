@@ -1,9 +1,32 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
 from app.models.event_booking import BookingStatus
+
+
+class EnhancementSelection(BaseModel):
+    """Schema for selecting an enhancement"""
+
+    enhancement_id: UUID
+    quantity: int = 1
+
+
+class BookingEnhancementResponse(BaseModel):
+    """Response schema for booking enhancement"""
+
+    id: UUID
+    enhancement_id: UUID
+    enhancement_name: str
+    enhancement_description: str
+    starting_price: float
+    quantity: int
+    price_at_booking: Optional[float] = None
+
+    class Config:
+        from_attributes = True
 
 
 class EventBookingBase(BaseModel):
@@ -14,11 +37,14 @@ class EventBookingBase(BaseModel):
     venue_location: str
 
     # Package Selection
-    package_id: Optional[int] = None
+    package_id: Optional[UUID] = None
 
     # Additional Details
     additional_details: Optional[str] = None
     special_requests: Optional[str] = None
+
+    # Enhancements Selection
+    enhancements: list[EnhancementSelection] = []
 
 
 class EventBookingCreate(EventBookingBase):
@@ -33,8 +59,19 @@ class EventBookingCreate(EventBookingBase):
 
 
 class EventBookingUpdate(BaseModel):
-    """Schema for updating booking (admin can update status and notes)"""
+    """Schema for updating booking (users can edit pending bookings, admin can update status)"""
 
+    # Fields users can update when status is pending
+    event_type: Optional[str] = None
+    event_date: Optional[datetime] = None
+    expected_guests: Optional[int] = None
+    venue_location: Optional[str] = None
+    package_id: Optional[UUID] = None
+    additional_details: Optional[str] = None
+    special_requests: Optional[str] = None
+    enhancements: Optional[list[EnhancementSelection]] = None
+
+    # Admin-only fields
     status: Optional[BookingStatus] = None
     admin_notes: Optional[str] = None
 
@@ -42,8 +79,8 @@ class EventBookingUpdate(BaseModel):
 class EventBooking(EventBookingBase):
     """Full booking details"""
 
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     full_name: str
     email: str
     phone: str
@@ -51,6 +88,7 @@ class EventBooking(EventBookingBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     admin_notes: Optional[str] = None
+    selected_enhancements: list[BookingEnhancementResponse] = []
 
     class Config:
         from_attributes = True
@@ -60,5 +98,5 @@ class EventBookingResponse(BaseModel):
     """Response after creating a booking"""
 
     message: str
-    booking_id: int
+    booking_id: UUID
     confirmation_email_sent: bool

@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,7 +17,7 @@ class SenderType(enum.Enum):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
     session_id: Mapped[str] = mapped_column(
         ForeignKey("sessions.session_id"), nullable=False
     )

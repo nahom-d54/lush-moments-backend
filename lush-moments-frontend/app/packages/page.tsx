@@ -10,7 +10,13 @@ import { Check, Sparkles, Crown, Star, Loader2 } from "lucide-react";
 import { AnonymousChat } from "@/components/anonymous-chat";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { usePackages } from "@/hooks/use-api-queries";
+import { usePackages, useFAQs, useEnhancements } from "@/hooks/use-api-queries";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Icon mapping based on package title
 const getPackageIcon = (title: string) => {
@@ -33,8 +39,18 @@ const getPackageColor = (index: number) => {
 export default function PackagesPage() {
   const { toast } = useToast();
 
-  // Use TanStack Query hook - caches for 24 hours
+  // Use TanStack Query hooks with caching
   const { data: packages = [], isLoading, error } = usePackages();
+  const {
+    data: enhancements = [],
+    isLoading: enhancementsLoading,
+    error: enhancementsError,
+  } = useEnhancements();
+  const {
+    data: faqs = [],
+    isLoading: faqsLoading,
+    error: faqsError,
+  } = useFAQs();
 
   // Show error toast if fetch fails
   useEffect(() => {
@@ -46,7 +62,24 @@ export default function PackagesPage() {
         variant: "destructive",
       });
     }
-  }, [error, toast]);
+    if (enhancementsError) {
+      toast({
+        title: "Failed to Load Enhancements",
+        description:
+          (enhancementsError as Error).message ||
+          "Could not load enhancement information",
+        variant: "destructive",
+      });
+    }
+    if (faqsError) {
+      toast({
+        title: "Failed to Load FAQs",
+        description:
+          (faqsError as Error).message || "Could not load FAQ information",
+        variant: "destructive",
+      });
+    }
+  }, [error, enhancementsError, faqsError, toast]);
 
   return (
     <div className="min-h-screen">
@@ -165,7 +198,7 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      {/* Add-ons Section - Keep static for now */}
+      {/* Add-ons Section - Dynamic from API */}
       <section className="py-16 lg:py-24 bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -183,100 +216,49 @@ export default function PackagesPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">
-                    Floral Arrangements
-                  </h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $150
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Fresh or silk floral centerpieces and accents
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">
-                    Photo Booth Setup
-                  </h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $300
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Custom backdrop with props and signage
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">
-                    Lighting Design
-                  </h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $200
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Ambient uplighting and string lights
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">
-                    Dessert Table Styling
-                  </h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $250
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Complete dessert display with décor
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">Lounge Area</h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $400
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Comfortable seating area with décor
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="h-full hover:shadow-lg transition-shadow">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">
-                    Custom Signage
-                  </h3>
-                  <span className="text-primary font-semibold text-sm">
-                    From $100
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Personalized welcome and directional signs
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          {enhancementsLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : enhancements.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No enhancements available at the moment.
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {enhancements.map((enhancement, index) => (
+                <motion.div
+                  key={enhancement.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.05 }}
+                >
+                  <Card className="h-full hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-semibold text-foreground">
+                          {enhancement.name}
+                        </h3>
+                        <span className="text-primary font-semibold text-sm whitespace-nowrap ml-2">
+                          From ${enhancement.starting_price}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {enhancement.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* FAQ Section */}
+      {/* FAQ Section - Dynamic from API */}
       <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -291,58 +273,44 @@ export default function PackagesPage() {
             </h2>
           </motion.div>
 
-          <div className="max-w-3xl mx-auto space-y-6">
-            <Card>
-              <CardContent className="p-6 space-y-2">
-                <h3 className="font-semibold text-foreground">
-                  Can I customize a package?
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  All our packages are fully customizable. We'll work with you
-                  to create the perfect décor that matches your vision and
-                  budget.
+          <div className="max-w-3xl mx-auto">
+            {faqsLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : faqs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  No FAQs available at the moment.
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 space-y-2">
-                <h3 className="font-semibold text-foreground">
-                  How far in advance should I book?
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  We recommend booking at least 4-6 weeks in advance for best
-                  availability. However, we'll do our best to accommodate
-                  last-minute requests.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 space-y-2">
-                <h3 className="font-semibold text-foreground">
-                  Do you provide setup and cleanup?
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Yes! All packages include professional setup and cleanup
-                  services. You can focus on enjoying your celebration while we
-                  handle the details.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 space-y-2">
-                <h3 className="font-semibold text-foreground">
-                  What areas do you serve?
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  We serve the greater metropolitan area and surrounding
-                  regions. Contact us to confirm service availability for your
-                  location.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+            ) : (
+              <Accordion type="single" collapsible className="space-y-4">
+                {faqs.map((faq, index) => (
+                  <motion.div
+                    key={faq.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: index * 0.05 }}
+                  >
+                    <AccordionItem
+                      value={faq.id}
+                      className="border rounded-lg px-6 bg-card"
+                    >
+                      <AccordionTrigger className="hover:no-underline py-4">
+                        <span className="font-semibold text-foreground text-left">
+                          {faq.question}
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground leading-relaxed pb-4">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </motion.div>
+                ))}
+              </Accordion>
+            )}
           </div>
         </div>
       </section>

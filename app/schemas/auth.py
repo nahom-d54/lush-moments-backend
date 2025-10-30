@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
@@ -11,10 +12,19 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    session_id: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    """Login request with email and password"""
+
+    email: EmailStr
+    password: str
+    session_id: Optional[str] = None
 
 
 class User(UserBase):
-    id: int
+    id: UUID
     role: str
     auth_provider: str
     avatar_url: Optional[str] = None
@@ -48,3 +58,4 @@ class OAuthUserInfo(BaseModel):
     email: EmailStr
     name: str
     avatar_url: Optional[str] = None
+    session_id: Optional[str] = None

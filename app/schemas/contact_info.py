@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
@@ -36,7 +37,7 @@ class ContactInfoUpdate(BaseModel):
 
 
 class ContactInfo(ContactInfoBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True

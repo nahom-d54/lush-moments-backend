@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     "Lush Moments - Event Décor That Makes Every Celebration Unforgettable",
   description:
     "Transform your special moments with elegant event décor for baby showers, birthdays, engagements, and more.",
-  generator: "v0.app",
 };
 
 export default function RootLayout({

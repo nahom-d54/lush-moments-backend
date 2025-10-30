@@ -19,12 +19,14 @@ async def get_themes(
         "en", description="Language code (e.g., 'en', 'es', 'fr')"
     ),
     featured: Optional[bool] = Query(None, description="Filter by featured themes"),
+    limit: Optional[int] = Query(3, description="Limit the number of themes returned"),
 ):
-    result = await db.execute(
-        select(Theme).where(Theme.featured == featured)
-        if featured is not None
-        else select(Theme)
-    )
+    query_term = select(Theme)
+    if featured is not None:
+        query_term = query_term.where(Theme.featured == featured)
+    if limit is not None:
+        query_term = query_term.limit(limit)
+    result = await db.execute(query_term.order_by(Theme.id))
     themes = result.scalars().all()
 
     # Apply translations if language is not English

@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Literal, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +48,7 @@ class GalleryItemUpdate(BaseModel):
 
 
 class GalleryItem(GalleryItemBase):
-    id: int
+    id: UUID
     image_url: str
     thumbnail_url: Optional[str] = None
     created_at: datetime

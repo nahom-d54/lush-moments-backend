@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -14,7 +16,7 @@ class TranslationCreate(TranslationBase):
 
 
 class Translation(TranslationBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True

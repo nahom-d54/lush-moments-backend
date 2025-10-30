@@ -51,6 +51,12 @@ export function Navigation() {
               Packages
             </Link>
             <Link
+              href="/faq"
+              className="text-foreground hover:text-primary transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
               href="/contact"
               className="text-foreground hover:text-primary transition-colors"
             >
@@ -152,6 +158,13 @@ export function Navigation() {
               Home
             </Link>
             <Link
+              href="/themes"
+              className="block text-foreground hover:text-primary transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Themes
+            </Link>
+            <Link
               href="/gallery"
               className="block text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
@@ -164,6 +177,13 @@ export function Navigation() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Packages
+            </Link>
+            <Link
+              href="/faq"
+              className="block text-foreground hover:text-primary transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              FAQ
             </Link>
             <Link
               href="/contact"

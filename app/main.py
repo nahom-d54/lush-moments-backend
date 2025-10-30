@@ -19,6 +19,8 @@ from app.routes.bookings import router as bookings_router
 from app.routes.chat import router as chat_router
 from app.routes.contact import router as contact_router
 from app.routes.contact_info import router as contact_info_router
+from app.routes.enhancements import router as enhancements_router
+from app.routes.faqs import router as faqs_router
 from app.routes.gallery import router as gallery_router
 from app.routes.packages import router as packages_router
 from app.routes.sessions import router as sessions_router
@@ -52,7 +54,7 @@ async def lifespan(app: FastAPI):
     print("✓ Closed Redis connection")
 
 
-app = FastAPI(title="Lush Moments Backend", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Lush Moments Backend", version="1.0.0", lifespan=lifespan)
 
 # Mount static files for uploads
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -71,6 +73,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+
 # Public routes
 app.include_router(packages_router)
 app.include_router(auth_router)
@@ -82,6 +85,9 @@ app.include_router(chat_router)
 app.include_router(contact_router)
 app.include_router(contact_info_router)
 app.include_router(gallery_router)
+app.include_router(faqs_router)
+app.include_router(faqs_router)
+app.include_router(enhancements_router)
 
 # Admin routes
 app.include_router(admin_packages_router)

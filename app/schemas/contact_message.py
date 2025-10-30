@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
@@ -21,13 +22,13 @@ class ContactMessageResponse(BaseModel):
     """Response after submitting contact form"""
 
     message: str
-    id: int
+    id: UUID
 
 
 class ContactMessage(ContactMessageBase):
     """Full contact message details (admin view)"""
 
-    id: int
+    id: UUID
     is_read: bool
     created_at: datetime
     responded_at: Optional[datetime] = None

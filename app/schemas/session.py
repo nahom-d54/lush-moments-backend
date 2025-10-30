@@ -1,10 +1,11 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
 
 class SessionBase(BaseModel):
-    linked_user_id: Optional[int] = None
+    linked_user_id: Optional[UUID] = None
 
 
 class SessionCreate(SessionBase):

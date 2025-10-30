@@ -40,9 +40,18 @@ export interface OAuthData {
 // Auth API
 export const authApi = {
   register: async (data: RegisterData): Promise<AuthResponse> => {
+    // Get chat session ID if exists
+    const sessionId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("lush-moments-chat-session")
+        : null;
+
     const response = await apiClient.post<AuthResponse>(
       "/auth/register",
-      data,
+      {
+        ...data,
+        session_id: sessionId,
+      },
       false
     );
     apiClient.setToken(response.access_token);
@@ -53,9 +62,18 @@ export const authApi = {
   },
 
   login: async (data: LoginData): Promise<AuthResponse> => {
+    // Get chat session ID if exists
+    const sessionId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("lush-moments-chat-session")
+        : null;
+
     const response = await apiClient.post<AuthResponse>(
       "/auth/login",
-      data,
+      {
+        ...data,
+        session_id: sessionId,
+      },
       false
     );
     apiClient.setToken(response.access_token);
@@ -66,9 +84,18 @@ export const authApi = {
   },
 
   oauthCallback: async (data: OAuthData): Promise<AuthResponse> => {
+    // Get chat session ID if exists
+    const sessionId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("lush-moments-chat-session")
+        : null;
+
     const response = await apiClient.post<AuthResponse>(
       "/auth/oauth/callback",
-      data,
+      {
+        ...data,
+        session_id: sessionId,
+      },
       false
     );
     apiClient.setToken(response.access_token);
