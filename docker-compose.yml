@@ -63,4 +63,4 @@ volumes:
 
 networks:
   lush_moments_network:
-    driver: bridg
+    driver: bridge
