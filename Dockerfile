@@ -45,8 +45,9 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 
-# Create uploads directory
-RUN mkdir -p uploads && chown -R app:app uploads
+# Create uploads directory structure with proper permissions
+RUN mkdir -p uploads/gallery uploads/gallery/thumbs uploads/testimonials uploads/themes && \
+    chown -R app:app uploads
 
 # Activate the virtual environment and switch to the non-root user
 ENV PATH="/opt/venv/bin:$PATH"
