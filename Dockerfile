@@ -5,18 +5,19 @@ FROM python:3.12-slim as builder
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Install build-time system dependencies
+# Install build-time system dependencies and create a virtual environment
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    python -m venv /opt/venv
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+# Activate the virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy dependency files and install dependencies
+# Install Python dependencies into the virtual environment
 WORKDIR /app
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir .
 
 # Copy application code
 COPY . .
@@ -37,11 +38,8 @@ RUN apt-get update && \
 # Create a non-root user to run the application
 RUN addgroup --system app && adduser --system --ingroup app app
 
-# Copy uv from builder
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
 # Copy the virtual environment from the builder stage
-COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /opt/venv /opt/venv
 
 # Copy the application code from the builder stage
 WORKDIR /app
@@ -51,7 +49,7 @@ COPY --from=builder --chown=app:app /app /app
 RUN mkdir -p uploads && chown -R app:app uploads
 
 # Activate the virtual environment and switch to the non-root user
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH"
 USER app
 
 # Expose port
