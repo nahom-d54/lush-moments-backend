@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, Text
@@ -28,5 +28,5 @@ class GalleryItem(Base):
         default=False, nullable=False
     )  # Featured on homepage
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime, default=datetime.utcnow, nullable=False
     )
