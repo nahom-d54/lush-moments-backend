@@ -53,7 +53,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     networks:
       - lush_moments_network
     restart: unless-stopped
@@ -62,6 +62,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   lush_moments_network:
