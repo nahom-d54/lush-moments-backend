@@ -55,7 +55,6 @@ services:
       - ./uploads:/app/uploads
     networks:
       - lush_moments_network
-    restart: unless-stopped
 
 volumes:
   postgres_data:
