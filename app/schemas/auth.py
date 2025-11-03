@@ -12,7 +12,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    session_id: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -20,7 +19,6 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str
-    session_id: Optional[str] = None
 
 
 class User(UserBase):
@@ -37,6 +35,15 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: Optional[User] = None  # Include user info in token response
+
+
+class AnonymousLoginResponse(BaseModel):
+    """Response for anonymous user creation"""
+
+    access_token: str
+    token_type: str
+    user_id: UUID
+    is_anonymous: bool
 
 
 class TokenData(BaseModel):
@@ -58,4 +65,3 @@ class OAuthUserInfo(BaseModel):
     email: EmailStr
     name: str
     avatar_url: Optional[str] = None
-    session_id: Optional[str] = None

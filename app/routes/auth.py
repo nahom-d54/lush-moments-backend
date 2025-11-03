@@ -1,95 +1,133 @@
 from datetime import datetime
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Session
 from app.models.user import AuthProvider, User
-from app.schemas.auth import LoginRequest, OAuthUserInfo, Token, UserCreate
+from app.schemas.auth import (
+    AnonymousLoginResponse,
+    LoginRequest,
+    OAuthUserInfo,
+    Token,
+    UserCreate,
+)
 from app.schemas.auth import User as UserSchema
-from app.utils.auth import create_access_token, get_password_hash, verify_password
+from app.utils.auth import (
+    create_access_token,
+    get_current_user_optional,
+    get_password_hash,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-async def merge_anonymous_session(
-    db: AsyncSession, user_id: str, session_id: Optional[str]
-) -> None:
+@router.post("/anonymous", response_model=AnonymousLoginResponse)
+async def create_anonymous_user(db: AsyncSession = Depends(get_db)):
     """
-    Helper function to merge an anonymous chat session with a user account.
-    Called after successful login/registration.
+    Create an anonymous user account for chat access.
+    This allows users to use the chat feature without full registration.
     """
-    if not session_id:
-        return
-
-    try:
-        # Get the anonymous session
-        result = await db.execute(
-            select(Session).where(Session.session_id == session_id)
-        )
-        anonymous_session = result.scalar_one_or_none()
-
-        if not anonymous_session:
-            # Create a new session linked to the user
-            new_session = Session(session_id=session_id, linked_user_id=user_id)
-            db.add(new_session)
-            await db.commit()
-            return
-
-        # If session is already linked to this user, nothing to do
-        if anonymous_session.linked_user_id == user_id:
-            return
-
-        # If session is not linked to any user, link it to this user
-        if anonymous_session.linked_user_id is None:
-            anonymous_session.linked_user_id = user_id
-            await db.commit()
-            return
-
-        # If session is linked to a different user, we don't merge
-        # to prevent session hijacking
-        return
-
-    except Exception as e:
-        # Log the error but don't fail the auth process
-        print(f"Failed to merge session {session_id}: {e}")
-        return
-
-
-@router.post("/register", response_model=Token)
-async def register(
-    user: UserCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Register a new user with email and password.
-    Optionally provide session_id in request body to merge anonymous chat session.
-    """
-    # Check if user exists
-    result = await db.execute(select(User).where(User.email == user.email))
-    existing_user = result.scalar_one_or_none()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Create user
-    hashed_password = get_password_hash(user.password)
+    # Create anonymous user
+    anonymous_email = f"anonymous_{uuid4()}@lushmoments.temp"
     db_user = User(
-        name=user.name,
-        email=user.email,
-        phone=user.phone,
-        password_hash=hashed_password,
+        name=f"Guest_{uuid4().hex[:8]}",
+        email=anonymous_email,
+        password_hash=None,
         auth_provider=AuthProvider.local,
+        isAnonymous=True,
         last_login=datetime.utcnow(),
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
 
-    # Merge anonymous chat session if provided
-    await merge_anonymous_session(db, db_user.id, user.session_id)
+    # Create access token
+    access_token = create_access_token(data={"sub": db_user.email})
+
+    return AnonymousLoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=db_user.id,
+        is_anonymous=True,
+    )
+
+
+async def convert_anonymous_to_regular(
+    db: AsyncSession,
+    anonymous_user: User,
+    name: str,
+    email: str,
+    phone: Optional[str],
+    password_hash: Optional[str] = None,
+) -> User:
+    """
+    Helper function to convert an anonymous user account to a regular account.
+    """
+    # Check if email is already taken by a non-anonymous user
+    result = await db.execute(
+        select(User).where(User.email == email, ~User.isAnonymous)
+    )
+    existing_user = result.scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Update the anonymous user to a regular user
+    anonymous_user.name = name
+    anonymous_user.email = email
+    anonymous_user.phone = phone
+    anonymous_user.password_hash = password_hash
+    anonymous_user.isAnonymous = False
+    anonymous_user.last_login = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(anonymous_user)
+
+    return anonymous_user
+
+
+@router.post("/register", response_model=Token)
+async def register(
+    user: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """
+    Register a new user with email and password.
+    If the current user is anonymous, convert their account to a regular account.
+    Otherwise, create a new account.
+    """
+    # If user is already logged in as anonymous, convert the account
+    if current_user and current_user.isAnonymous:
+        hashed_password = get_password_hash(user.password)
+        db_user = await convert_anonymous_to_regular(
+            db, current_user, user.name, user.email, user.phone, hashed_password
+        )
+    else:
+        # Check if user exists
+        result = await db.execute(select(User).where(User.email == user.email))
+        existing_user = result.scalar_one_or_none()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        # Create new user
+        hashed_password = get_password_hash(user.password)
+        db_user = User(
+            name=user.name,
+            email=user.email,
+            phone=user.phone,
+            password_hash=hashed_password,
+            auth_provider=AuthProvider.local,
+            isAnonymous=False,
+            last_login=datetime.utcnow(),
+        )
+        db.add(db_user)
+        await db.commit()
+        await db.refresh(db_user)
 
     # Create token
     access_token = create_access_token(data={"sub": db_user.email})
@@ -116,7 +154,6 @@ async def login(
 ):
     """
     Login with email and password.
-    Optionally provide session_id to merge anonymous chat session.
     """
     result = await db.execute(select(User).where(User.email == user_request.email))
     user = result.scalar_one_or_none()
@@ -127,13 +164,17 @@ async def login(
     if not verify_password(user_request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Don't allow login to anonymous accounts
+    if user.isAnonymous:
+        raise HTTPException(
+            status_code=400,
+            detail="This is an anonymous account. Please register with your email and password.",
+        )
+
     # Update last login
     user.last_login = datetime.utcnow()
     await db.commit()
-    await db.refresh(user)  # Refresh to reload all attributes
-
-    # Merge anonymous chat session if provided
-    await merge_anonymous_session(db, user.id, user_request.session_id)
+    await db.refresh(user)
 
     access_token = create_access_token(data={"sub": user.email})
 
@@ -155,56 +196,73 @@ async def login(
 @router.post("/oauth/callback", response_model=Token)
 async def oauth_callback(
     oauth_user: OAuthUserInfo,
-    session_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Handle OAuth callback from frontend.
     Frontend should exchange OAuth code for user info and send it here.
-    Optionally provide session_id to merge anonymous chat session.
+    If the current user is anonymous, convert their account to OAuth account.
     """
-    # Check if user exists by OAuth ID
-    result = await db.execute(
-        select(User).where(
-            User.oauth_id == oauth_user.oauth_id,
-            User.auth_provider == AuthProvider[oauth_user.provider],
+    # If user is already logged in as anonymous, convert the account
+    if current_user and current_user.isAnonymous:
+        user = await convert_anonymous_to_regular(
+            db,
+            current_user,
+            oauth_user.name,
+            oauth_user.email,
+            None,  # OAuth users typically don't have phone
+            None,  # No password for OAuth users
         )
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
-        # Check if email is already registered with different provider
-        result = await db.execute(select(User).where(User.email == oauth_user.email))
-        existing_user = result.scalar_one_or_none()
-
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Email already registered with {existing_user.auth_provider.value} provider",
-            )
-
-        # Create new user
-        user = User(
-            name=oauth_user.name,
-            email=oauth_user.email,
-            auth_provider=AuthProvider[oauth_user.provider],
-            oauth_id=oauth_user.oauth_id,
-            avatar_url=oauth_user.avatar_url,
-            password_hash=None,  # No password for OAuth users
-            last_login=datetime.utcnow(),
-        )
-        db.add(user)
+        # Update OAuth-specific fields
+        user.auth_provider = AuthProvider[oauth_user.provider]
+        user.oauth_id = oauth_user.oauth_id
+        user.avatar_url = oauth_user.avatar_url
         await db.commit()
         await db.refresh(user)
     else:
-        # Update existing user info
-        user.name = oauth_user.name
-        user.avatar_url = oauth_user.avatar_url
-        user.last_login = datetime.utcnow()
-        await db.commit()
+        # Check if user exists by OAuth ID
+        result = await db.execute(
+            select(User).where(
+                User.oauth_id == oauth_user.oauth_id,
+                User.auth_provider == AuthProvider[oauth_user.provider],
+            )
+        )
+        user = result.scalar_one_or_none()
 
-    # Merge anonymous chat session if provided
-    await merge_anonymous_session(db, user.id, session_id)
+        if not user:
+            # Check if email is already registered with different provider
+            result = await db.execute(
+                select(User).where(User.email == oauth_user.email)
+            )
+            existing_user = result.scalar_one_or_none()
+
+            if existing_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Email already registered with {existing_user.auth_provider.value} provider",
+                )
+
+            # Create new user
+            user = User(
+                name=oauth_user.name,
+                email=oauth_user.email,
+                auth_provider=AuthProvider[oauth_user.provider],
+                oauth_id=oauth_user.oauth_id,
+                avatar_url=oauth_user.avatar_url,
+                password_hash=None,  # No password for OAuth users
+                isAnonymous=False,
+                last_login=datetime.utcnow(),
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+        else:
+            # Update existing user info
+            user.name = oauth_user.name
+            user.avatar_url = oauth_user.avatar_url
+            user.last_login = datetime.utcnow()
+            await db.commit()
 
     # Create token
     access_token = create_access_token(data={"sub": user.email})

@@ -18,8 +18,11 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
-    session_id: Mapped[str] = mapped_column(
-        ForeignKey("sessions.session_id"), nullable=False
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sessions.id"), nullable=False, index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id"), nullable=False, index=True
     )
     sender_type: Mapped[SenderType] = mapped_column(Enum(SenderType), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
@@ -29,3 +32,4 @@ class ChatMessage(Base):
 
     # Relationships
     session = relationship("Session", back_populates="messages")
+    user = relationship("User", back_populates="chat_messages")

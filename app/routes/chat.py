@@ -3,14 +3,13 @@ from datetime import datetime
 from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.lush_agent import run_agent
 from app.database import AsyncSessionLocal, get_db
-from app.models import ChatMessage, Session
-from app.utils.auth import get_current_user
+from app.models import ChatMessage, Session, User
+from app.utils.auth import get_current_user, verify_token
 
 router = APIRouter()
 
@@ -19,17 +18,17 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
 
-    async def connect(self, websocket: WebSocket, session_id: str):
+    async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
-        self.active_connections[session_id] = websocket
+        self.active_connections[user_id] = websocket
 
-    def disconnect(self, session_id: str):
-        if session_id in self.active_connections:
-            del self.active_connections[session_id]
+    def disconnect(self, user_id: str):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
 
-    async def send_message(self, message: str, session_id: str):
-        if session_id in self.active_connections:
-            await self.active_connections[session_id].send_text(message)
+    async def send_message(self, message: str, user_id: str):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_text(message)
 
     async def broadcast(self, message: str):
         for connection in self.active_connections.values():
@@ -39,27 +38,66 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@router.websocket("/ws/chat/{session_id}")
-async def websocket_chat(websocket: WebSocket, session_id: str):
+@router.websocket("/ws/chat")
+async def websocket_chat(
+    websocket: WebSocket,
+):
+    """
+    WebSocket chat endpoint. Requires authentication via token in query params.
+    Both anonymous and regular users must provide a valid JWT token.
+    Expected URL: /ws/chat?token=<jwt_token>
+    """
     # Accept the WebSocket connection first (before any other operations)
     # This is required for CORS to work properly
     await websocket.accept()
 
     db: AsyncSession = AsyncSessionLocal()
+    user_id_str = None
 
     try:
-        # Add connection to manager after accepting
-        manager.active_connections[session_id] = websocket
+        # Get token from query params
+        query_params = dict(websocket.query_params)
+        token = query_params.get("token")
 
-        # Check if session exists, create if not
-        result = await db.execute(
-            select(Session).where(Session.session_id == session_id)
-        )
+        if not token:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Missing token in query parameters",
+                }
+            )
+            await websocket.close(code=1008)  # Policy violation
+            return
+
+        # Verify token and get user
+        email = verify_token(token)
+        if email is None:
+            await websocket.send_json(
+                {"type": "error", "message": "Invalid or expired token"}
+            )
+            await websocket.close(code=1008)  # Policy violation
+            return
+
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            await websocket.send_json({"type": "error", "message": "User not found"})
+            await websocket.close(code=1008)  # Policy violation
+            return
+
+        user_id_str = str(user.id)
+
+        # Add connection to manager after authentication
+        manager.active_connections[user_id_str] = websocket
+
+        # Check if user has a session, create if not
+        result = await db.execute(select(Session).where(Session.user_id == user.id))
         session = result.scalar_one_or_none()
 
         if not session:
             session = Session(
-                session_id=session_id,
+                user_id=user.id,
                 is_handled_by_agent=True,
                 transferred_to_human=False,
             )
@@ -75,7 +113,8 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
         now = datetime.utcnow()
 
         welcome_chat_msg = ChatMessage(
-            session_id=session_id,
+            session_id=session.id,
+            user_id=user.id,
             sender_type="bot",
             message=welcome_msg,
             timestamp=now,
@@ -92,7 +131,7 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                     "is_agent": True,
                 }
             ),
-            session_id,
+            user_id_str,
         )
 
         while True:
@@ -120,7 +159,8 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                 now = datetime.utcnow()
 
                 transfer_chat_msg = ChatMessage(
-                    session_id=session_id,
+                    session_id=session.id,
+                    user_id=user.id,
                     sender_type="bot",
                     message=transfer_msg,
                     timestamp=now,
@@ -137,14 +177,15 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                             "transferred": True,
                         }
                     ),
-                    session_id,
+                    user_id_str,
                 )
                 continue
 
             # Save user message to database
             now = datetime.utcnow()
             chat_message = ChatMessage(
-                session_id=session_id,
+                session_id=session.id,
+                user_id=user.id,
                 sender_type="user",
                 message=user_message,
                 timestamp=now,
@@ -164,7 +205,7 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                         "timestamp": now.isoformat(),
                     }
                 ),
-                session_id,
+                user_id_str,
             )
 
             # Check if session is handled by agent or transferred to human
@@ -172,7 +213,8 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                 # Don't send to agent, wait for human response
                 now = datetime.utcnow()
                 waiting_msg = ChatMessage(
-                    session_id=session_id,
+                    session_id=session.id,
+                    user_id=user.id,
                     sender_type="bot",
                     message="A human agent will respond to your message shortly...",
                     timestamp=now,
@@ -189,13 +231,13 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                             "is_agent": False,
                         }
                     ),
-                    session_id,
+                    user_id_str,
                 )
             else:
                 # Get chat history for context
                 history_result = await db.execute(
                     select(ChatMessage)
-                    .where(ChatMessage.session_id == session_id)
+                    .where(ChatMessage.user_id == user.id)
                     .order_by(ChatMessage.timestamp)
                     .limit(20)  # Last 20 messages for context
                 )
@@ -229,7 +271,8 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                 # Save AI response
                 now = datetime.utcnow()
                 auto_reply = ChatMessage(
-                    session_id=session_id,
+                    session_id=session.id,
+                    user_id=user.id,
                     sender_type="bot",
                     message=ai_response,
                     timestamp=now,
@@ -246,187 +289,115 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                             "is_agent": True,
                         }
                     ),
-                    session_id,
+                    user_id_str,
                 )
 
     except WebSocketDisconnect:
-        manager.disconnect(session_id)
-        print(f"Client {session_id} disconnected")
+        if user_id_str:
+            manager.disconnect(user_id_str)
+            print(f"Client {user_id_str} disconnected")
 
     except Exception as e:
         print(f"Error in websocket: {e}")
         import traceback
 
         traceback.print_exc()
-        manager.disconnect(session_id)
+        if user_id_str:
+            manager.disconnect(user_id_str)
 
     finally:
         await db.close()
 
 
-@router.get("/chat/history/{session_id}")
-async def get_chat_history(session_id: str):
-    """Get chat history for a session"""
-    db: AsyncSession = AsyncSessionLocal()
-
-    try:
-        result = await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.timestamp)
-        )
-        messages = result.scalars().all()
-
-        return {
-            "session_id": session_id,
-            "messages": [
-                {
-                    "id": str(msg.id),
-                    "sender_type": msg.sender_type.value,
-                    "message": msg.message,
-                    "timestamp": msg.timestamp.isoformat(),
-                }
-                for msg in messages
-            ],
-        }
-    finally:
-        await db.close()
-
-
-class MergeSessionRequest(BaseModel):
-    """Request to merge anonymous chat session with user account"""
-
-    anonymous_session_id: str
-
-
-@router.post("/chat/merge-session")
-async def merge_chat_session(
-    request: MergeSessionRequest,
-    current_user=Depends(get_current_user),
+@router.get("/chat/history")
+async def get_chat_history(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Merge an anonymous chat session with the authenticated user's account.
-    Called after login/registration to associate chat history with the user.
-    """
-    try:
-        # Get the anonymous session
-        result = await db.execute(
-            select(Session).where(Session.session_id == request.anonymous_session_id)
-        )
-        anonymous_session = result.scalar_one_or_none()
-
-        if not anonymous_session:
-            # Session doesn't exist, create a new one linked to the user
-            new_session = Session(
-                session_id=request.anonymous_session_id, linked_user_id=current_user.id
-            )
-            db.add(new_session)
-            await db.commit()
-
-            return {
-                "success": True,
-                "message": "New session created and linked to your account",
-                "session_id": request.anonymous_session_id,
-            }
-
-        # Check if session is already linked to this user
-        if anonymous_session.linked_user_id == current_user.id:
-            return {
-                "success": True,
-                "message": "Session already linked to your account",
-                "session_id": request.anonymous_session_id,
-            }
-
-        # Check if session is linked to a different user
-        if anonymous_session.linked_user_id is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="This chat session is already linked to another account",
-            )
-
-        # Link the anonymous session to the current user
-        anonymous_session.linked_user_id = current_user.id
-        await db.commit()
-
-        # Get message count
-        result = await db.execute(
-            select(ChatMessage).where(
-                ChatMessage.session_id == request.anonymous_session_id
-            )
-        )
-        messages = result.scalars().all()
-
-        return {
-            "success": True,
-            "message": f"Successfully linked chat session with {len(messages)} messages to your account",
-            "session_id": request.anonymous_session_id,
-            "message_count": len(messages),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to merge chat session: {str(e)}"
-        )
-
-
-@router.get("/chat/my-sessions")
-async def get_user_sessions(
-    current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
-    """Get all chat sessions linked to the authenticated user"""
+    """Get chat history for the authenticated user."""
     result = await db.execute(
-        select(Session).where(Session.linked_user_id == current_user.id)
+        select(ChatMessage)
+        .where(ChatMessage.user_id == current_user.id)
+        .order_by(ChatMessage.timestamp)
     )
-    sessions = result.scalars().all()
+    messages = result.scalars().all()
 
-    session_list = []
-    for session in sessions:
-        # Get message count
-        msg_result = await db.execute(
-            select(ChatMessage).where(ChatMessage.session_id == session.session_id)
-        )
-        messages = msg_result.scalars().all()
-
-        # Get last message
-        last_message = messages[-1] if messages else None
-
-        session_list.append(
+    return {
+        "user_id": str(current_user.id),
+        "messages": [
             {
-                "session_id": session.session_id,
-                "created_at": session.created_at.isoformat(),
-                "message_count": len(messages),
-                "is_handled_by_agent": session.is_handled_by_agent,
-                "transferred_to_human": session.transferred_to_human,
-                "last_message": (
-                    {
-                        "sender_type": last_message.sender_type.value,
-                        "message": last_message.message,
-                        "timestamp": last_message.timestamp.isoformat(),
-                    }
-                    if last_message
-                    else None
-                ),
+                "id": str(msg.id),
+                "sender_type": msg.sender_type.value,
+                "message": msg.message,
+                "timestamp": msg.timestamp.isoformat(),
             }
+            for msg in messages
+        ],
+    }
+
+
+@router.get("/chat/session")
+async def get_user_session(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Get the chat session for the authenticated user"""
+    result = await db.execute(select(Session).where(Session.user_id == current_user.id))
+    session = result.scalar_one_or_none()
+
+    if not session:
+        # Create session if doesn't exist
+        session = Session(
+            user_id=current_user.id,
+            is_handled_by_agent=True,
+            transferred_to_human=False,
         )
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
 
-    return {"sessions": session_list, "total": len(session_list)}
+    # Get message count
+    msg_result = await db.execute(
+        select(ChatMessage).where(ChatMessage.user_id == current_user.id)
+    )
+    messages = msg_result.scalars().all()
+
+    # Get last message
+    last_message = messages[-1] if messages else None
+
+    return {
+        "session_id": str(session.id),
+        "user_id": str(current_user.id),
+        "created_at": session.created_at.isoformat(),
+        "message_count": len(messages),
+        "is_handled_by_agent": session.is_handled_by_agent,
+        "transferred_to_human": session.transferred_to_human,
+        "last_message": (
+            {
+                "sender_type": last_message.sender_type.value,
+                "message": last_message.message,
+                "timestamp": last_message.timestamp.isoformat(),
+            }
+            if last_message
+            else None
+        ),
+    }
 
 
-@router.get("/chat/session/{session_id}/status")
-async def get_session_status(session_id: str, db: AsyncSession = Depends(get_db)):
-    """Get the status of a chat session (agent vs human)"""
-    result = await db.execute(select(Session).where(Session.session_id == session_id))
+@router.get("/chat/status")
+async def get_session_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the status of the user's chat session (agent vs human). Must be authenticated."""
+    result = await db.execute(select(Session).where(Session.user_id == current_user.id))
     session = result.scalar_one_or_none()
 
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
     return {
-        "session_id": session.session_id,
+        "session_id": str(session.id),
+        "user_id": str(current_user.id),
         "is_handled_by_agent": session.is_handled_by_agent,
         "transferred_to_human": session.transferred_to_human,
         "transfer_reason": session.transfer_reason,

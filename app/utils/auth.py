@@ -74,6 +74,29 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+        HTTPBearer(auto_error=False)
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    Get current user from token, but return None instead of raising exception if not authenticated.
+    Useful for endpoints that can work with or without authentication.
+    """
+    if not credentials:
+        return None
+
+    token = credentials.credentials
+    email = verify_token(token)
+    if email is None:
+        return None
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    return user
+
+
 async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != Role.admin:
         raise HTTPException(status_code=403, detail="Not enough permissions")

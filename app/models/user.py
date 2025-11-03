@@ -41,7 +41,13 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc)
     )
     last_login: Mapped[datetime | None]
+    isAnonymous: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )  # For anonymous users
 
     # Relationships
-    sessions = relationship("Session", back_populates="user")
+    session = relationship(
+        "Session", back_populates="user", uselist=False
+    )  # One-to-one
+    chat_messages = relationship("ChatMessage", back_populates="user")
     bookings = relationship("EventBooking", back_populates="user")
