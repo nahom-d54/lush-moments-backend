@@ -35,11 +35,6 @@ async def lifespan(app: FastAPI):
     # Create upload directories
     ensure_upload_directories()
     print("✓ Upload directories initialized")
-
-    # Create tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     # Initialize Redis connection
     try:
         await get_redis()

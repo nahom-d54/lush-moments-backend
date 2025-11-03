@@ -1,6 +1,7 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import UUID
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -35,9 +36,11 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -64,10 +67,12 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     token = credentials.credentials
-    email = verify_token(token)
-    if email is None:
+    id = verify_token(token)
+    if id is None:
         raise credentials_exception
-    result = await db.execute(select(User).where(User.email == email))
+
+    uuid_id = UUID(hex=id)
+    result = await db.execute(select(User).where(User.id == uuid_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception
@@ -88,11 +93,11 @@ async def get_current_user_optional(
         return None
 
     token = credentials.credentials
-    email = verify_token(token)
-    if email is None:
+    id = verify_token(token)
+    if id is None:
         return None
-
-    result = await db.execute(select(User).where(User.email == email))
+    uuid_id = UUID(hex=id)
+    result = await db.execute(select(User).where(User.id == uuid_id))
     user = result.scalar_one_or_none()
     return user
 

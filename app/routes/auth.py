@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -47,7 +47,10 @@ async def create_anonymous_user(db: AsyncSession = Depends(get_db)):
     await db.refresh(db_user)
 
     # Create access token
-    access_token = create_access_token(data={"sub": db_user.email})
+    access_token = create_access_token(
+        data={"sub": db_user.id.hex, "isAnonymous": True},
+        expires_delta=timedelta(days=30),
+    )
 
     return AnonymousLoginResponse(
         access_token=access_token,
@@ -130,7 +133,9 @@ async def register(
         await db.refresh(db_user)
 
     # Create token
-    access_token = create_access_token(data={"sub": db_user.email})
+    access_token = create_access_token(
+        data={"sub": db_user.id.hex, "isAnonymous": False}
+    )
 
     return Token(
         access_token=access_token,
@@ -176,7 +181,7 @@ async def login(
     await db.commit()
     await db.refresh(user)
 
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": user.id.hex, "isAnonymous": False})
 
     return Token(
         access_token=access_token,
@@ -252,7 +257,7 @@ async def oauth_callback(
                 avatar_url=oauth_user.avatar_url,
                 password_hash=None,  # No password for OAuth users
                 isAnonymous=False,
-                last_login=datetime.utcnow(),
+                last_login=datetime.now(timezone.utc),
             )
             db.add(user)
             await db.commit()
@@ -261,11 +266,11 @@ async def oauth_callback(
             # Update existing user info
             user.name = oauth_user.name
             user.avatar_url = oauth_user.avatar_url
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(timezone.utc)
             await db.commit()
 
     # Create token
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": user.id.hex, "isAnonymous": False})
 
     return Token(
         access_token=access_token,

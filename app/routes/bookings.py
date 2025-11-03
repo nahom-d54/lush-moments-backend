@@ -33,6 +33,12 @@ async def create_booking(
     Requires user to be logged in.
     Sends confirmation email to customer and notification to admin.
     """
+    # prevent anonymous user from creating booking
+    if current_user.isAnonymous:
+        raise HTTPException(
+            status_code=403,
+            detail="Anonymous users are not allowed to create bookings. Please register or log in.",
+        )
     # Create booking with user_id
     db_booking = EventBookingModel(
         user_id=current_user.id,
