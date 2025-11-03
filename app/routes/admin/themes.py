@@ -1,11 +1,14 @@
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Theme
+from app.models.gallery_category import GalleryCategory
 from app.schemas.theme import Theme as ThemeSchema
 from app.utils.auth import get_current_admin
 from app.utils.image_processing import delete_gallery_image, save_gallery_image
@@ -17,9 +20,17 @@ router = APIRouter(prefix="/admin/themes", tags=["Themes"])
 async def get_themes(
     db: AsyncSession = Depends(get_db), current_admin=Depends(get_current_admin)
 ):
-    result = await db.execute(select(Theme))
+    result = await db.execute(select(Theme).options(selectinload(Theme.category)))
     themes = result.scalars().all()
-    return themes
+
+    # Add category names
+    themes_with_category = []
+    for theme in themes:
+        theme_dict = ThemeSchema.model_validate(theme).model_dump()
+        theme_dict["category_name"] = theme.category.name if theme.category else None
+        themes_with_category.append(ThemeSchema(**theme_dict))
+
+    return themes_with_category
 
 
 @router.post("/", response_model=ThemeSchema)
@@ -27,6 +38,7 @@ async def create_theme(
     files: List[UploadFile] = File(..., description="Upload 1-10 theme images"),
     name: str = Form(...),
     description: str | None = Form(None),
+    category_id: str | None = Form(None),  # UUID as string
     featured: bool = Form(False),
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
@@ -44,6 +56,19 @@ async def create_theme(
             status_code=400, detail="Maximum 10 images allowed per theme"
         )
 
+    # Validate category if provided
+    cat_uuid = None
+    if category_id:
+        try:
+            cat_uuid = UUID(category_id)
+            cat_result = await db.execute(
+                select(GalleryCategory).where(GalleryCategory.id == cat_uuid)
+            )
+            if not cat_result.scalar_one_or_none():
+                raise HTTPException(status_code=404, detail="Category not found")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid category ID format")
+
     uploaded_images = []
 
     try:
@@ -56,6 +81,7 @@ async def create_theme(
         db_theme = Theme(
             name=name,
             description=description,
+            category_id=cat_uuid,
             gallery_images=uploaded_images,
             featured=featured,
         )
@@ -64,7 +90,17 @@ async def create_theme(
         await db.commit()
         await db.refresh(db_theme)
 
-        return db_theme
+        # Load category relationship
+        result = await db.execute(
+            select(Theme)
+            .options(selectinload(Theme.category))
+            .where(Theme.id == db_theme.id)
+        )
+        theme = result.scalar_one()
+
+        theme_dict = ThemeSchema.model_validate(theme).model_dump()
+        theme_dict["category_name"] = theme.category.name if theme.category else None
+        return ThemeSchema(**theme_dict)
 
     except ValueError as e:
         await db.rollback()
@@ -88,25 +124,31 @@ async def create_theme(
 
 @router.get("/{theme_id}", response_model=ThemeSchema)
 async def get_theme(
-    theme_id: int,
+    theme_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):
-    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    result = await db.execute(
+        select(Theme).options(selectinload(Theme.category)).where(Theme.id == theme_id)
+    )
     theme = result.scalar_one_or_none()
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
-    return theme
+
+    theme_dict = ThemeSchema.model_validate(theme).model_dump()
+    theme_dict["category_name"] = theme.category.name if theme.category else None
+    return ThemeSchema(**theme_dict)
 
 
 @router.put("/{theme_id}", response_model=ThemeSchema)
 async def update_theme(
-    theme_id: int,
+    theme_id: UUID,
     files: List[UploadFile] | None = File(
         None, description="Upload new images (optional)"
     ),
     name: str | None = Form(None),
     description: str | None = Form(None),
+    category_id: str | None = Form(None),  # UUID as string
     featured: bool | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
@@ -121,6 +163,21 @@ async def update_theme(
         raise HTTPException(status_code=404, detail="Theme not found")
 
     try:
+        # Validate category if provided
+        if category_id is not None:
+            try:
+                cat_uuid = UUID(category_id)
+                cat_result = await db.execute(
+                    select(GalleryCategory).where(GalleryCategory.id == cat_uuid)
+                )
+                if not cat_result.scalar_one_or_none():
+                    raise HTTPException(status_code=404, detail="Category not found")
+                db_theme.category_id = cat_uuid
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail="Invalid category ID format"
+                )
+
         # If new files are uploaded, replace old images
         if files and len(files) > 0:
             if len(files) > 10:
@@ -157,7 +214,18 @@ async def update_theme(
 
         await db.commit()
         await db.refresh(db_theme)
-        return db_theme
+
+        # Load category relationship
+        result = await db.execute(
+            select(Theme)
+            .options(selectinload(Theme.category))
+            .where(Theme.id == theme_id)
+        )
+        theme = result.scalar_one()
+
+        theme_dict = ThemeSchema.model_validate(theme).model_dump()
+        theme_dict["category_name"] = theme.category.name if theme.category else None
+        return ThemeSchema(**theme_dict)
 
     except ValueError as e:
         await db.rollback()
@@ -169,7 +237,7 @@ async def update_theme(
 
 @router.delete("/{theme_id}")
 async def delete_theme(
-    theme_id: int,
+    theme_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):

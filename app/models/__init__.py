@@ -4,6 +4,7 @@ from .contact_info import ContactInfo
 from .contact_message import ContactMessage
 from .event_booking import EventBooking
 from .faq import FAQ
+from .gallery_category import GalleryCategory
 from .gallery_item import GalleryItem
 from .package import Package
 from .package_enhancement import PackageEnhancement
@@ -28,6 +29,7 @@ __all__ = [
     "Translation",
     "ContactMessage",
     "ContactInfo",
+    "GalleryCategory",
     "GalleryItem",
     "FAQ",
 ]

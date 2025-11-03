@@ -1,8 +1,8 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, DateTime, ForeignKey, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -17,9 +17,9 @@ class GalleryItem(Base):
     description: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str] = mapped_column(nullable=False)
     thumbnail_url: Mapped[str | None]  # Optimized thumbnail for fast loading
-    category: Mapped[str] = mapped_column(
-        nullable=False, index=True
-    )  # e.g., "wedding", "birthday", "corporate"
+    category_id: Mapped[UUID] = mapped_column(
+        ForeignKey("gallery_categories.id"), nullable=False, index=True
+    )
     tags: Mapped[list[str] | None] = mapped_column(
         JSON
     )  # JSON array of tags: ["outdoor", "elegant", "modern"]
@@ -30,3 +30,6 @@ class GalleryItem(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+
+    # Relationships
+    category_obj = relationship("GalleryCategory", back_populates="gallery_items")

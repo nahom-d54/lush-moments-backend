@@ -11,6 +11,7 @@ from .base import BaseSeeder
 from .contact_info_seeder import ContactInfoSeeder
 from .enhancement_seeder import EnhancementSeeder
 from .faq_seeder import FAQSeeder
+from .gallery_category_seeder import GalleryCategorySeeder
 from .gallery_seeder import GallerySeeder
 from .package_seeder import PackageSeeder
 from .registry import SeederRegistry, registry
@@ -27,6 +28,7 @@ __all__ = [
     "FAQSeeder",
     "EnhancementSeeder",
     "ThemeSeeder",
+    "GalleryCategorySeeder",
     "GallerySeeder",
     "TestimonialSeeder",
     "ContactInfoSeeder",

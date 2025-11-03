@@ -1,8 +1,8 @@
-"""updated user logic added is anonymous and modified chat
+"""added dynamic gallery category
 
-Revision ID: 44541192917f
+Revision ID: d929392b417f
 Revises: 
-Create Date: 2025-11-03 07:01:33.025448
+Create Date: 2025-11-03 08:11:03.476861
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '44541192917f'
+revision: str = 'd929392b417f'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -60,21 +60,19 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_faqs_id'), 'faqs', ['id'], unique=False)
-    op.create_table('gallery_items',
+    op.create_table('gallery_categories',
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('title', sa.String(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('image_url', sa.String(), nullable=False),
-    sa.Column('thumbnail_url', sa.String(), nullable=True),
-    sa.Column('category', sa.String(), nullable=False),
-    sa.Column('tags', sa.JSON(), nullable=True),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('slug', sa.String(), nullable=False),
+    sa.Column('description', sa.String(), nullable=True),
     sa.Column('display_order', sa.Integer(), nullable=False),
-    sa.Column('is_featured', sa.Boolean(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_gallery_items_category'), 'gallery_items', ['category'], unique=False)
-    op.create_index(op.f('ix_gallery_items_id'), 'gallery_items', ['id'], unique=False)
+    op.create_index(op.f('ix_gallery_categories_id'), 'gallery_categories', ['id'], unique=False)
+    op.create_index(op.f('ix_gallery_categories_name'), 'gallery_categories', ['name'], unique=True)
+    op.create_index(op.f('ix_gallery_categories_slug'), 'gallery_categories', ['slug'], unique=True)
     op.create_table('package_enhancements',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
@@ -106,15 +104,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_testimonials_id'), 'testimonials', ['id'], unique=False)
-    op.create_table('themes',
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('name', sa.String(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('gallery_images', sa.JSON(), nullable=True),
-    sa.Column('featured', sa.Boolean(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_themes_id'), 'themes', ['id'], unique=False)
     op.create_table('translations',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('content_type', sa.String(), nullable=False),
@@ -168,6 +157,22 @@ def upgrade() -> None:
     op.create_index(op.f('ix_event_bookings_event_date'), 'event_bookings', ['event_date'], unique=False)
     op.create_index(op.f('ix_event_bookings_id'), 'event_bookings', ['id'], unique=False)
     op.create_index(op.f('ix_event_bookings_user_id'), 'event_bookings', ['user_id'], unique=False)
+    op.create_table('gallery_items',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('title', sa.String(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('image_url', sa.String(), nullable=False),
+    sa.Column('thumbnail_url', sa.String(), nullable=True),
+    sa.Column('category_id', sa.Uuid(), nullable=False),
+    sa.Column('tags', sa.JSON(), nullable=True),
+    sa.Column('display_order', sa.Integer(), nullable=False),
+    sa.Column('is_featured', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['category_id'], ['gallery_categories.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_gallery_items_category_id'), 'gallery_items', ['category_id'], unique=False)
+    op.create_index(op.f('ix_gallery_items_id'), 'gallery_items', ['id'], unique=False)
     op.create_table('package_items',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('package_id', sa.Uuid(), nullable=False),
@@ -189,6 +194,18 @@ def upgrade() -> None:
     sa.UniqueConstraint('user_id')
     )
     op.create_index(op.f('ix_sessions_id'), 'sessions', ['id'], unique=False)
+    op.create_table('themes',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('category_id', sa.Uuid(), nullable=True),
+    sa.Column('gallery_images', sa.JSON(), nullable=True),
+    sa.Column('featured', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['category_id'], ['gallery_categories.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_themes_category_id'), 'themes', ['category_id'], unique=False)
+    op.create_index(op.f('ix_themes_id'), 'themes', ['id'], unique=False)
     op.create_table('booking_enhancements',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('booking_id', sa.Uuid(), nullable=False),
@@ -230,10 +247,16 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_booking_enhancements_enhancement_id'), table_name='booking_enhancements')
     op.drop_index(op.f('ix_booking_enhancements_booking_id'), table_name='booking_enhancements')
     op.drop_table('booking_enhancements')
+    op.drop_index(op.f('ix_themes_id'), table_name='themes')
+    op.drop_index(op.f('ix_themes_category_id'), table_name='themes')
+    op.drop_table('themes')
     op.drop_index(op.f('ix_sessions_id'), table_name='sessions')
     op.drop_table('sessions')
     op.drop_index(op.f('ix_package_items_id'), table_name='package_items')
     op.drop_table('package_items')
+    op.drop_index(op.f('ix_gallery_items_id'), table_name='gallery_items')
+    op.drop_index(op.f('ix_gallery_items_category_id'), table_name='gallery_items')
+    op.drop_table('gallery_items')
     op.drop_index(op.f('ix_event_bookings_user_id'), table_name='event_bookings')
     op.drop_index(op.f('ix_event_bookings_id'), table_name='event_bookings')
     op.drop_index(op.f('ix_event_bookings_event_date'), table_name='event_bookings')
@@ -245,17 +268,16 @@ def downgrade() -> None:
     op.drop_table('users')
     op.drop_index(op.f('ix_translations_id'), table_name='translations')
     op.drop_table('translations')
-    op.drop_index(op.f('ix_themes_id'), table_name='themes')
-    op.drop_table('themes')
     op.drop_index(op.f('ix_testimonials_id'), table_name='testimonials')
     op.drop_table('testimonials')
     op.drop_index(op.f('ix_packages_id'), table_name='packages')
     op.drop_table('packages')
     op.drop_index(op.f('ix_package_enhancements_id'), table_name='package_enhancements')
     op.drop_table('package_enhancements')
-    op.drop_index(op.f('ix_gallery_items_id'), table_name='gallery_items')
-    op.drop_index(op.f('ix_gallery_items_category'), table_name='gallery_items')
-    op.drop_table('gallery_items')
+    op.drop_index(op.f('ix_gallery_categories_slug'), table_name='gallery_categories')
+    op.drop_index(op.f('ix_gallery_categories_name'), table_name='gallery_categories')
+    op.drop_index(op.f('ix_gallery_categories_id'), table_name='gallery_categories')
+    op.drop_table('gallery_categories')
     op.drop_index(op.f('ix_faqs_id'), table_name='faqs')
     op.drop_table('faqs')
     op.drop_index(op.f('ix_contact_messages_id'), table_name='contact_messages')

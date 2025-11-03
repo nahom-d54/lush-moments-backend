@@ -7,6 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.chat_message import ChatMessage
+from app.models.session import Session
 from app.models.user import AuthProvider, User
 from app.schemas.auth import (
     AnonymousLoginResponse,
@@ -156,9 +158,12 @@ async def register(
 async def login(
     user_request: LoginRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Login with email and password.
+    If an anonymous user is logged in, their chat history and session will be transferred
+    to the logged-in account, and the anonymous account will be deleted.
     """
     result = await db.execute(select(User).where(User.email == user_request.email))
     user = result.scalar_one_or_none()
@@ -169,12 +174,64 @@ async def login(
     if not verify_password(user_request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Don't allow login to anonymous accounts
+    # Don't allow login to anonymous accounts directly
     if user.isAnonymous:
         raise HTTPException(
             status_code=400,
             detail="This is an anonymous account. Please register with your email and password.",
         )
+
+    # If there's an anonymous user logged in, transfer their data
+    if current_user and current_user.isAnonymous:
+        # Transfer session and chat messages to the logged-in user
+
+        # Get anonymous user's session
+        anon_session_result = await db.execute(
+            select(Session).where(Session.user_id == current_user.id)
+        )
+        anon_session = anon_session_result.scalar_one_or_none()
+
+        if anon_session:
+            # Check if logged-in user already has a session
+            user_session_result = await db.execute(
+                select(Session).where(Session.user_id == user.id)
+            )
+            user_session = user_session_result.scalar_one_or_none()
+
+            if user_session:
+                # Transfer all messages from anonymous session to user's session
+                await db.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_id == anon_session.id)
+                    .execution_options(synchronize_session=False)
+                )
+                messages_result = await db.execute(
+                    select(ChatMessage).where(ChatMessage.session_id == anon_session.id)
+                )
+                messages = messages_result.scalars().all()
+
+                for message in messages:
+                    message.session_id = user_session.id
+                    message.user_id = user.id
+
+                # Delete anonymous session
+                await db.delete(anon_session)
+            else:
+                # Transfer the session itself to the logged-in user
+                anon_session.user_id = user.id
+
+                # Update all messages to point to the logged-in user
+                messages_result = await db.execute(
+                    select(ChatMessage).where(ChatMessage.session_id == anon_session.id)
+                )
+                messages = messages_result.scalars().all()
+
+                for message in messages:
+                    message.user_id = user.id
+
+        # Delete the anonymous user account
+        await db.delete(current_user)
+        await db.commit()
 
     # Update last login
     user.last_login = datetime.utcnow()
@@ -209,45 +266,100 @@ async def oauth_callback(
     Frontend should exchange OAuth code for user info and send it here.
     If the current user is anonymous, convert their account to OAuth account.
     """
-    # If user is already logged in as anonymous, convert the account
-    if current_user and current_user.isAnonymous:
-        user = await convert_anonymous_to_regular(
-            db,
-            current_user,
-            oauth_user.name,
-            oauth_user.email,
-            None,  # OAuth users typically don't have phone
-            None,  # No password for OAuth users
+    # Check if user exists by OAuth ID
+    result = await db.execute(
+        select(User).where(
+            User.oauth_id == oauth_user.oauth_id,
+            User.auth_provider == AuthProvider[oauth_user.provider],
         )
-        # Update OAuth-specific fields
-        user.auth_provider = AuthProvider[oauth_user.provider]
-        user.oauth_id = oauth_user.oauth_id
+    )
+    user = result.scalar_one_or_none()
+
+    if user:
+        # User already exists with this OAuth ID
+        # If there's an anonymous user logged in, transfer their data and delete anonymous account
+        if current_user and current_user.isAnonymous:
+            # Get anonymous user's session
+            anon_session_result = await db.execute(
+                select(Session).where(Session.user_id == current_user.id)
+            )
+            anon_session = anon_session_result.scalar_one_or_none()
+
+            if anon_session:
+                # Check if OAuth user already has a session
+                user_session_result = await db.execute(
+                    select(Session).where(Session.user_id == user.id)
+                )
+                user_session = user_session_result.scalar_one_or_none()
+
+                if user_session:
+                    # Transfer all messages from anonymous session to user's session
+                    messages_result = await db.execute(
+                        select(ChatMessage).where(
+                            ChatMessage.session_id == anon_session.id
+                        )
+                    )
+                    messages = messages_result.scalars().all()
+
+                    for message in messages:
+                        message.session_id = user_session.id
+                        message.user_id = user.id
+
+                    # Delete anonymous session
+                    await db.delete(anon_session)
+                else:
+                    # Transfer the session itself to the OAuth user
+                    anon_session.user_id = user.id
+
+                    # Update all messages to point to the OAuth user
+                    messages_result = await db.execute(
+                        select(ChatMessage).where(
+                            ChatMessage.session_id == anon_session.id
+                        )
+                    )
+                    messages = messages_result.scalars().all()
+
+                    for message in messages:
+                        message.user_id = user.id
+
+            # Delete the anonymous user account
+            await db.delete(current_user)
+
+        # Update existing user info
+        user.name = oauth_user.name
         user.avatar_url = oauth_user.avatar_url
+        user.last_login = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(user)
     else:
-        # Check if user exists by OAuth ID
-        result = await db.execute(
-            select(User).where(
-                User.oauth_id == oauth_user.oauth_id,
-                User.auth_provider == AuthProvider[oauth_user.provider],
+        # Check if email is already registered with different provider
+        result = await db.execute(select(User).where(User.email == oauth_user.email))
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            # Email exists with different provider
+            raise HTTPException(
+                status_code=400,
+                detail=f"Email already registered with {existing_user.auth_provider.value} provider",
             )
-        )
-        user = result.scalar_one_or_none()
 
-        if not user:
-            # Check if email is already registered with different provider
-            result = await db.execute(
-                select(User).where(User.email == oauth_user.email)
+        # If user is already logged in as anonymous, convert the account
+        if current_user and current_user.isAnonymous:
+            user = await convert_anonymous_to_regular(
+                db,
+                current_user,
+                oauth_user.name,
+                oauth_user.email,
+                None,  # OAuth users typically don't have phone
+                None,  # No password for OAuth users
             )
-            existing_user = result.scalar_one_or_none()
-
-            if existing_user:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Email already registered with {existing_user.auth_provider.value} provider",
-                )
-
+            # Update OAuth-specific fields
+            user.auth_provider = AuthProvider[oauth_user.provider]
+            user.oauth_id = oauth_user.oauth_id
+            user.avatar_url = oauth_user.avatar_url
+            await db.commit()
+            await db.refresh(user)
+        else:
             # Create new user
             user = User(
                 name=oauth_user.name,
@@ -262,12 +374,6 @@ async def oauth_callback(
             db.add(user)
             await db.commit()
             await db.refresh(user)
-        else:
-            # Update existing user info
-            user.name = oauth_user.name
-            user.avatar_url = oauth_user.avatar_url
-            user.last_login = datetime.now(timezone.utc)
-            await db.commit()
 
     # Create token
     access_token = create_access_token(data={"sub": user.id.hex, "isAnonymous": False})

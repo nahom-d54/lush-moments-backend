@@ -1,11 +1,15 @@
-from typing import Literal
+from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.models.gallery_category import GalleryCategory
 from app.models.gallery_item import GalleryItem
+from app.schemas.gallery_category import GalleryCategory as GalleryCategorySchema
 from app.schemas.gallery_item import (
     GalleryItem as GalleryItemSchema,
 )
@@ -18,7 +22,7 @@ router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("/", response_model=GalleryItemList)
 async def get_gallery_items(
-    category: Literal["Baby Showers", "Birthdays", "Engagements"] = None,
+    category: Optional[str] = None,  # Can be category slug or name
     featured_only: bool = False,
     skip: int = 0,
     limit: int = 50,
@@ -26,15 +30,28 @@ async def get_gallery_items(
 ):
     """
     Public endpoint: Get gallery items with optional filters.
-    Can filter by category and featured status.
+    Can filter by category (slug or name) and featured status.
     """
-    query = select(GalleryItem).offset(skip).limit(limit)
+    query = (
+        select(GalleryItem)
+        .options(selectinload(GalleryItem.category_obj))
+        .offset(skip)
+        .limit(limit)
+    )
     count_query = select(func.count(GalleryItem.id))
 
     # Apply filters
     if category:
-        query = query.where(GalleryItem.category == category)
-        count_query = count_query.where(GalleryItem.category == category)
+        # Find category by slug or name
+        cat_result = await db.execute(
+            select(GalleryCategory).where(
+                (GalleryCategory.slug == category) | (GalleryCategory.name == category)
+            )
+        )
+        cat_obj = cat_result.scalar_one_or_none()
+        if cat_obj:
+            query = query.where(GalleryItem.category_id == cat_obj.id)
+            count_query = count_query.where(GalleryItem.category_id == cat_obj.id)
 
     if featured_only:
         query = query.where(GalleryItem.is_featured.is_(True))
@@ -50,25 +67,44 @@ async def get_gallery_items(
     count_result = await db.execute(count_query)
     total = count_result.scalar()
 
-    return GalleryItemList(items=items, total=total, category=category)
+    # Convert to response format with category name
+    items_with_category = []
+    for item in items:
+        item_dict = GalleryItemSchema.model_validate(item).model_dump()
+        item_dict["category_name"] = (
+            item.category_obj.name if item.category_obj else None
+        )
+        items_with_category.append(GalleryItemSchema(**item_dict))
+
+    return GalleryItemList(items=items_with_category, total=total, category=category)
 
 
-@router.get("/categories")
+@router.get("/categories", response_model=list[GalleryCategorySchema])
 async def get_gallery_categories(db: AsyncSession = Depends(get_db)):
-    """Public endpoint: Get all unique gallery categories"""
-    query = select(GalleryItem.category).distinct()
+    """Public endpoint: Get all active gallery categories"""
+    query = (
+        select(GalleryCategory)
+        .where(GalleryCategory.is_active.is_(True))
+        .order_by(GalleryCategory.display_order, GalleryCategory.name)
+    )
     result = await db.execute(query)
     categories = result.scalars().all()
-    return {"categories": categories}
+    return categories
 
 
 @router.get("/{item_id}", response_model=GalleryItemSchema)
-async def get_gallery_item(item_id: int, db: AsyncSession = Depends(get_db)):
+async def get_gallery_item(item_id: UUID, db: AsyncSession = Depends(get_db)):
     """Public endpoint: Get a specific gallery item"""
-    result = await db.execute(select(GalleryItem).where(GalleryItem.id == item_id))
+    result = await db.execute(
+        select(GalleryItem)
+        .options(selectinload(GalleryItem.category_obj))
+        .where(GalleryItem.id == item_id)
+    )
     item = result.scalar_one_or_none()
 
     if not item:
         raise HTTPException(status_code=404, detail="Gallery item not found")
 
-    return item
+    item_dict = GalleryItemSchema.model_validate(item).model_dump()
+    item_dict["category_name"] = item.category_obj.name if item.category_obj else None
+    return GalleryItemSchema(**item_dict)

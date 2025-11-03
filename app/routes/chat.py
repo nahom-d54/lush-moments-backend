@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Dict
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -70,15 +71,26 @@ async def websocket_chat(
             return
 
         # Verify token and get user
-        email = verify_token(token)
-        if email is None:
+        user_id_hex = verify_token(token)
+        if user_id_hex is None:
             await websocket.send_json(
                 {"type": "error", "message": "Invalid or expired token"}
             )
             await websocket.close(code=1008)  # Policy violation
             return
 
-        result = await db.execute(select(User).where(User.email == email))
+        # Get user by ID (token contains user ID, not email)
+
+        try:
+            user_uuid = UUID(hex=user_id_hex)
+        except (ValueError, AttributeError):
+            await websocket.send_json(
+                {"type": "error", "message": "Invalid token format"}
+            )
+            await websocket.close(code=1008)  # Policy violation
+            return
+
+        result = await db.execute(select(User).where(User.id == user_uuid))
         user = result.scalar_one_or_none()
 
         if user is None:
@@ -86,18 +98,20 @@ async def websocket_chat(
             await websocket.close(code=1008)  # Policy violation
             return
 
-        user_id_str = str(user.id)
+        # Store user_id as string and UUID for later use
+        user_id_str = str(user_uuid)
+        user_id = user_uuid
 
         # Add connection to manager after authentication
         manager.active_connections[user_id_str] = websocket
 
         # Check if user has a session, create if not
-        result = await db.execute(select(Session).where(Session.user_id == user.id))
+        result = await db.execute(select(Session).where(Session.user_id == user_id))
         session = result.scalar_one_or_none()
 
         if not session:
             session = Session(
-                user_id=user.id,
+                user_id=user_id,
                 is_handled_by_agent=True,
                 transferred_to_human=False,
             )
@@ -108,19 +122,12 @@ async def websocket_chat(
             # Refresh to ensure all attributes are loaded
             await db.refresh(session)
 
-        # Send welcome message
+        # Store session_id to avoid lazy loading issues
+        session_id = session.id
+
+        # Send welcome message (don't save to database to avoid cluttering chat history)
         welcome_msg = "Hello! Welcome to Lush Moments. I'm your AI assistant. How can I help you plan your perfect celebration today?"
         now = datetime.utcnow()
-
-        welcome_chat_msg = ChatMessage(
-            session_id=session.id,
-            user_id=user.id,
-            sender_type="bot",
-            message=welcome_msg,
-            timestamp=now,
-        )
-        db.add(welcome_chat_msg)
-        await db.commit()
 
         await manager.send_message(
             json.dumps(
@@ -159,8 +166,8 @@ async def websocket_chat(
                 now = datetime.utcnow()
 
                 transfer_chat_msg = ChatMessage(
-                    session_id=session.id,
-                    user_id=user.id,
+                    session_id=session_id,
+                    user_id=user_id,
                     sender_type="bot",
                     message=transfer_msg,
                     timestamp=now,
@@ -184,8 +191,8 @@ async def websocket_chat(
             # Save user message to database
             now = datetime.utcnow()
             chat_message = ChatMessage(
-                session_id=session.id,
-                user_id=user.id,
+                session_id=session_id,
+                user_id=user_id,
                 sender_type="user",
                 message=user_message,
                 timestamp=now,
@@ -213,8 +220,8 @@ async def websocket_chat(
                 # Don't send to agent, wait for human response
                 now = datetime.utcnow()
                 waiting_msg = ChatMessage(
-                    session_id=session.id,
-                    user_id=user.id,
+                    session_id=session_id,
+                    user_id=user_id,
                     sender_type="bot",
                     message="A human agent will respond to your message shortly...",
                     timestamp=now,
@@ -237,7 +244,7 @@ async def websocket_chat(
                 # Get chat history for context
                 history_result = await db.execute(
                     select(ChatMessage)
-                    .where(ChatMessage.user_id == user.id)
+                    .where(ChatMessage.user_id == user_id)
                     .order_by(ChatMessage.timestamp)
                     .limit(20)  # Last 20 messages for context
                 )
@@ -271,8 +278,8 @@ async def websocket_chat(
                 # Save AI response
                 now = datetime.utcnow()
                 auto_reply = ChatMessage(
-                    session_id=session.id,
-                    user_id=user.id,
+                    session_id=session_id,
+                    user_id=user_id,
                     sender_type="bot",
                     message=ai_response,
                     timestamp=now,

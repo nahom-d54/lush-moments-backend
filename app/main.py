@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.config import settings
 from app.database import Base, engine
 from app.routes.admin.bookings import router as admin_bookings_router
 from app.routes.admin.contact import router as admin_contact_router
@@ -57,12 +58,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # CORS Configuration - Allow frontend to make requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js development server
-        "http://127.0.0.1:3000",
-        # Add production URLs when deploying
-        # "https://yourdomain.com",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
