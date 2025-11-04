@@ -6,5 +6,6 @@ mkdir -p uploads/gallery/thumbs
 mkdir -p uploads/testimonials
 mkdir -p uploads/themes
 
+alembic upgrade head
 # Execute the main command
 exec "$@"

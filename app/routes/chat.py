@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 from uuid import UUID
 
@@ -127,7 +127,7 @@ async def websocket_chat(
 
         # Send welcome message (don't save to database to avoid cluttering chat history)
         welcome_msg = "Hello! Welcome to Lush Moments. I'm your AI assistant. How can I help you plan your perfect celebration today?"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         await manager.send_message(
             json.dumps(
@@ -163,7 +163,7 @@ async def websocket_chat(
                     "I've transferred you to a human agent. "
                     "One of our team members will be with you shortly!"
                 )
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
 
                 transfer_chat_msg = ChatMessage(
                     session_id=session_id,
@@ -189,7 +189,7 @@ async def websocket_chat(
                 continue
 
             # Save user message to database
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             chat_message = ChatMessage(
                 session_id=session_id,
                 user_id=user_id,
@@ -218,7 +218,7 @@ async def websocket_chat(
             # Check if session is handled by agent or transferred to human
             if session.transferred_to_human:
                 # Don't send to agent, wait for human response
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 waiting_msg = ChatMessage(
                     session_id=session_id,
                     user_id=user_id,
@@ -276,7 +276,7 @@ async def websocket_chat(
                     )
 
                 # Save AI response
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 auto_reply = ChatMessage(
                     session_id=session_id,
                     user_id=user_id,

@@ -42,7 +42,7 @@ async def create_anonymous_user(db: AsyncSession = Depends(get_db)):
         password_hash=None,
         auth_provider=AuthProvider.local,
         isAnonymous=True,
-        last_login=datetime.utcnow(),
+        last_login=datetime.now(timezone.utc),
     )
     db.add(db_user)
     await db.commit()
@@ -87,7 +87,7 @@ async def convert_anonymous_to_regular(
     anonymous_user.phone = phone
     anonymous_user.password_hash = password_hash
     anonymous_user.isAnonymous = False
-    anonymous_user.last_login = datetime.utcnow()
+    anonymous_user.last_login = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(anonymous_user)
@@ -128,7 +128,7 @@ async def register(
             password_hash=hashed_password,
             auth_provider=AuthProvider.local,
             isAnonymous=False,
-            last_login=datetime.utcnow(),
+            last_login=datetime.now(timezone.utc),
         )
         db.add(db_user)
         await db.commit()
@@ -234,7 +234,7 @@ async def login(
         await db.commit()
 
     # Update last login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(user)
 
