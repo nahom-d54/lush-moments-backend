@@ -30,8 +30,6 @@ services:
     env_file:
       - path: .env
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
@@ -42,7 +40,6 @@ services:
 
 
 volumes:
-  postgres_data:
   redis_data:
   uploads_data:
 
