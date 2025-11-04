@@ -58,7 +58,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # CORS Configuration - Allow frontend to make requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers

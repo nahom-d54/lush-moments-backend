@@ -40,14 +40,17 @@ class Settings(BaseSettings):
     BUSINESS_PHONE: str = os.getenv("BUSINESS_PHONE", "+1-234-567-8900")
 
     # CORS
-    CORS_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:10001",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:10001",
-        "http://127.0.0.1:5173",
-    ]
+    CORS_ORIGINS: str = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:10001,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:10001,http://127.0.0.1:5173",
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS string into a list."""
+        if isinstance(self.CORS_ORIGINS, str):
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        return self.CORS_ORIGINS
 
     # Media Upload
     UPLOAD_DIR: str = "uploads"
