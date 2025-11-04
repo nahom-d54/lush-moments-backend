@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Enum, String
+from sqlalchemy import DateTime, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -38,9 +38,11 @@ class User(Base):
     )  # OAuth provider user ID
     avatar_url: Mapped[str | None]  # Profile picture from OAuth
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    last_login: Mapped[datetime | None]
+    last_login: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     isAnonymous: Mapped[bool] = mapped_column(
         default=False, nullable=False
     )  # For anonymous users

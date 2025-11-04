@@ -34,7 +34,9 @@ class EventBooking(Base):
     event_type: Mapped[str] = mapped_column(
         nullable=False
     )  # dropdown: wedding, birthday, corporate, etc.
-    event_date: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    event_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     expected_guests: Mapped[int] = mapped_column(nullable=False)
     venue_location: Mapped[str] = mapped_column(nullable=False)
 
@@ -50,10 +52,12 @@ class EventBooking(Base):
         Enum(BookingStatus), default=BookingStatus.pending, nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime, onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc)
     )
     admin_notes: Mapped[str | None] = mapped_column(Text)  # Internal notes for admins
 
