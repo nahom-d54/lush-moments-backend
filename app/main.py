@@ -50,7 +50,14 @@ async def lifespan(app: FastAPI):
     print("✓ Closed Redis connection")
 
 
-app = FastAPI(title="Lush Moments Backend", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Lush Moments Backend",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
+    openapi_url="/openapi.json" if settings.ENVIRONMENT == "development" else None,
+)
 
 # Mount static files for uploads
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

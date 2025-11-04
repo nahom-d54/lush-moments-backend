@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -12,6 +13,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "Lush Moments"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    ENVIRONMENT: Literal["development", "staging", "production"] = os.getenv(
+        "ENVIRONMENT", "production"
+    )  # development, staging, production
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///lush_moments.db")
