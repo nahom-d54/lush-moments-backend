@@ -47,6 +47,8 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: admin123
+    env_file:
+      - path: .env
     depends_on:
       db:
         condition: service_healthy
