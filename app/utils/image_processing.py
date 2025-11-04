@@ -38,6 +38,7 @@ def validate_image_file(file: UploadFile) -> None:
 async def save_gallery_image(file: UploadFile) -> Tuple[str, str]:
     """
     Save uploaded gallery image and generate thumbnail.
+    Automatically converts images to WebP format for better compression.
 
     Args:
         file: Uploaded image file
@@ -54,9 +55,8 @@ async def save_gallery_image(file: UploadFile) -> Tuple[str, str]:
     # Ensure directories exist
     ensure_upload_directories()
 
-    # Generate unique filename
-    file_ext = Path(file.filename).suffix.lower()
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    # Generate unique filename with .webp extension
+    unique_filename = f"{uuid.uuid4()}.webp"
 
     # Full image path
     image_path = GALLERY_DIR / unique_filename
@@ -71,10 +71,13 @@ async def save_gallery_image(file: UploadFile) -> Tuple[str, str]:
             f"File too large. Maximum size: {MAX_FILE_SIZE // 1024 // 1024}MB"
         )
 
+    # Reset file pointer for PIL to read
+    await file.seek(0)
+
     # Open and process image
     try:
         with Image.open(file.file) as img:
-            # Convert RGBA to RGB if necessary (for JPEG compatibility)
+            # Convert RGBA to RGB if necessary (for WebP compatibility)
             if img.mode in ("RGBA", "LA", "P"):
                 background = Image.new("RGB", img.size, (255, 255, 255))
                 if img.mode == "P":
@@ -87,20 +90,13 @@ async def save_gallery_image(file: UploadFile) -> Tuple[str, str]:
             # Resize main image if too large (maintain aspect ratio)
             img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
 
-            # Save optimized main image
-            save_kwargs = {
-                "optimize": True,
-                "quality": 85,
-            }
-            if file_ext in [".jpg", ".jpeg"]:
-                save_kwargs["progressive"] = True
+            # Save optimized main image as WebP
+            img.save(image_path, format="WEBP", optimize=True, quality=85)
 
-            img.save(image_path, **save_kwargs)
-
-            # Create and save thumbnail
+            # Create and save thumbnail as WebP
             img_thumb = img.copy()
             img_thumb.thumbnail(THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
-            img_thumb.save(thumbnail_path, **save_kwargs)
+            img_thumb.save(thumbnail_path, format="WEBP", optimize=True, quality=85)
 
     except Exception as e:
         # Clean up any created files on error
