@@ -24,10 +24,10 @@ from app.utils.image_processing import delete_gallery_image, save_gallery_image
 router = APIRouter(prefix="/admin/gallery", tags=["Gallery"])
 
 
-@router.post("/", response_model=List[GalleryItemSchema], status_code=201)
-@router.post("", response_model=List[GalleryItemSchema], status_code=201)
-async def create_gallery_items(
-    files: List[UploadFile] = File(..., description="Upload 1-5 images"),
+@router.post("/", response_model=GalleryItemSchema, status_code=201)
+@router.post("", response_model=GalleryItemSchema, status_code=201)
+async def create_gallery_item(
+    files: List[UploadFile] = File(..., description="Upload 1-10 images"),
     title: str = Form(...),
     category_id: str = Form(...),  # UUID as string
     description: str | None = Form(None),
@@ -38,17 +38,17 @@ async def create_gallery_items(
     current_admin=Depends(get_current_admin),
 ):
     """
-    Admin endpoint: Create gallery items with multiple image uploads (1-5 images).
+    Admin endpoint: Create a single gallery item with multiple images (1-10 images).
+    The first image becomes the primary image_url, and all images are stored in gallery_images array.
     Each image automatically generates an optimized thumbnail using Pillow.
-    All images will share the same title, category, description, and tags.
     """
     # Validate number of files
     if not files or len(files) == 0:
         raise HTTPException(status_code=400, detail="At least one image is required")
 
-    if len(files) > 5:
+    if len(files) > 10:
         raise HTTPException(
-            status_code=400, detail="Maximum 5 images allowed per upload"
+            status_code=400, detail="Maximum 10 images allowed per gallery item"
         )
 
     # Validate category exists
@@ -64,8 +64,6 @@ async def create_gallery_items(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    created_items = []
-
     # Parse tags if provided (sent as JSON string from form)
     parsed_tags = None
     if tags:
@@ -80,62 +78,67 @@ async def create_gallery_items(
                 status_code=400, detail="Invalid tags format. Expected JSON array."
             )
 
+    uploaded_images = []
+    primary_image_url = None
+    primary_thumbnail_url = None
+
     try:
+        # Upload all images
         for idx, file in enumerate(files):
-            # Save image and generate thumbnail automatically
             image_url, thumbnail_url = await save_gallery_image(file)
+            uploaded_images.append(image_url)
 
-            # Create database entry
-            # Adjust display_order for each image
-            db_item = GalleryItem(
-                title=f"{title} ({idx + 1})" if len(files) > 1 else title,
-                description=description,
-                category_id=cat_uuid,
-                tags=parsed_tags,  # Use parsed list instead of string
-                display_order=display_order + idx,
-                is_featured=is_featured
-                if idx == 0
-                else False,  # Only first image featured
-                image_url=image_url,
-                thumbnail_url=thumbnail_url,
-            )
+            # First image is the primary/cover image
+            if idx == 0:
+                primary_image_url = image_url
+                primary_thumbnail_url = thumbnail_url
 
-            db.add(db_item)
-            created_items.append(db_item)
+        # Create single database entry with all images
+        db_item = GalleryItem(
+            title=title,
+            description=description,
+            category_id=cat_uuid,
+            tags=parsed_tags,
+            display_order=display_order,
+            is_featured=is_featured,
+            image_url=primary_image_url,
+            thumbnail_url=primary_thumbnail_url,
+            gallery_images=uploaded_images,  # Store all image URLs including primary
+        )
 
+        db.add(db_item)
         await db.commit()
+        await db.refresh(db_item)
 
-        # Refresh all items with category relationship
-        for item in created_items:
-            await db.refresh(item)
-            # Load category relationship
-            await db.execute(
-                select(GalleryItem)
-                .options(selectinload(GalleryItem.category_obj))
-                .where(GalleryItem.id == item.id)
-            )
+        # Load category relationship
+        result = await db.execute(
+            select(GalleryItem)
+            .options(selectinload(GalleryItem.category_obj))
+            .where(GalleryItem.id == db_item.id)
+        )
+        item = result.scalar_one()
 
-        return created_items
+        return item
 
     except ValueError as e:
         await db.rollback()
         # Clean up any uploaded files
-        for item in created_items:
+        for image_url in uploaded_images:
             try:
-                delete_gallery_image(item.image_url, item.thumbnail_url)
+                delete_gallery_image(image_url, None)
             except Exception:
                 pass
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         await db.rollback()
         # Clean up any uploaded files
-        for item in created_items:
+        for image_url in uploaded_images:
             try:
-                delete_gallery_image(item.image_url, item.thumbnail_url)
+                delete_gallery_image(image_url, None)
             except Exception:
                 pass
         raise HTTPException(
-            status_code=500, detail=f"Failed to create gallery items: {str(e)}"
+            status_code=500, detail=f"Failed to create gallery item: {str(e)}"
         )
 
 
@@ -149,13 +152,15 @@ async def update_gallery_item(
     tags: str | None = Form(None),
     display_order: int | None = Form(None),
     is_featured: bool | None = Form(None),
-    file: UploadFile | None = File(None),
+    files: List[UploadFile] | None = File(
+        None, description="Upload new images (optional, replaces all)"
+    ),
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):
     """
     Admin endpoint: Update a gallery item.
-    Optionally upload a new image (will replace old image and regenerate thumbnail).
+    Optionally upload new images (will replace all existing images).
     """
     result = await db.execute(select(GalleryItem).where(GalleryItem.id == item_id))
     item = result.scalar_one_or_none()
@@ -195,24 +200,51 @@ async def update_gallery_item(
                     status_code=400, detail="Invalid tags format. Expected JSON array."
                 )
 
-        # If a new file is uploaded, replace the image
-        if file and file.filename:
-            # Delete old images
+        # If new files are uploaded, replace all images
+        if files and len(files) > 0:
+            if len(files) > 10:
+                raise HTTPException(
+                    status_code=400, detail="Maximum 10 images allowed per gallery item"
+                )
+
+            # Store old images for cleanup
             old_image_url = item.image_url
             old_thumbnail_url = item.thumbnail_url
+            old_gallery_images = item.gallery_images or []
 
-            # Save new image and generate thumbnail
-            image_url, thumbnail_url = await save_gallery_image(file)
+            # Upload new images
+            uploaded_images = []
+            primary_image_url = None
+            primary_thumbnail_url = None
 
-            # Update URLs
-            item.image_url = image_url
-            item.thumbnail_url = thumbnail_url
+            for idx, file in enumerate(files):
+                image_url, thumbnail_url = await save_gallery_image(file)
+                uploaded_images.append(image_url)
 
-            # Delete old files after successful upload
+                if idx == 0:
+                    primary_image_url = image_url
+                    primary_thumbnail_url = thumbnail_url
+
+            # Update image fields
+            item.image_url = primary_image_url
+            item.thumbnail_url = primary_thumbnail_url
+            item.gallery_images = uploaded_images
+
+            # Delete old images after successful upload
             try:
                 delete_gallery_image(old_image_url, old_thumbnail_url)
             except Exception as e:
-                print(f"Warning: Failed to delete old image files: {e}")
+                print(f"Warning: Failed to delete old primary image: {e}")
+
+            # Delete old gallery images
+            for old_img in old_gallery_images:
+                if old_img != old_image_url:  # Don't try to delete primary twice
+                    try:
+                        delete_gallery_image(old_img, None)
+                    except Exception as e:
+                        print(
+                            f"Warning: Failed to delete old gallery image {old_img}: {e}"
+                        )
 
         # Update other fields
         if title is not None:
@@ -220,7 +252,7 @@ async def update_gallery_item(
         if description is not None:
             item.description = description
         if parsed_tags is not None:
-            item.tags = parsed_tags  # Use parsed list
+            item.tags = parsed_tags
         if display_order is not None:
             item.display_order = display_order
         if is_featured is not None:
@@ -249,7 +281,7 @@ async def delete_gallery_item(
 ):
     """
     Admin endpoint: Delete a gallery item.
-    Also deletes associated image files from filesystem.
+    Also deletes associated image files from filesystem (including all gallery images).
     """
     result = await db.execute(select(GalleryItem).where(GalleryItem.id == item_id))
     item = result.scalar_one_or_none()
@@ -257,12 +289,20 @@ async def delete_gallery_item(
     if not item:
         raise HTTPException(status_code=404, detail="Gallery item not found")
 
-    # Delete images from filesystem
+    # Delete primary images from filesystem
     try:
         delete_gallery_image(item.image_url, item.thumbnail_url)
     except Exception as e:
-        # Log error but continue with database deletion
-        print(f"Warning: Failed to delete image files: {e}")
+        print(f"Warning: Failed to delete primary image files: {e}")
+
+    # Delete all gallery images from filesystem
+    if item.gallery_images:
+        for img_url in item.gallery_images:
+            if img_url != item.image_url:  # Don't try to delete primary twice
+                try:
+                    delete_gallery_image(img_url, None)
+                except Exception as e:
+                    print(f"Warning: Failed to delete gallery image {img_url}: {e}")
 
     # Delete from database
     await db.delete(item)

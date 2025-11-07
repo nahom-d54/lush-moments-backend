@@ -15,8 +15,11 @@ class GalleryItem(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, index=True, default=uuid4)
     title: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    image_url: Mapped[str] = mapped_column(nullable=False)
+    image_url: Mapped[str] = mapped_column(nullable=False)  # Primary/cover image
     thumbnail_url: Mapped[str | None]  # Optimized thumbnail for fast loading
+    gallery_images: Mapped[list[str] | None] = mapped_column(
+        JSON
+    )  # Additional images: ["/uploads/gallery/img1.webp", "/uploads/gallery/img2.webp"]
     category_id: Mapped[UUID] = mapped_column(
         ForeignKey("gallery_categories.id"), nullable=False, index=True
     )
