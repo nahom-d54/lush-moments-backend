@@ -9,6 +9,7 @@ from app.database import Base, engine
 from app.routes.admin.bookings import router as admin_bookings_router
 from app.routes.admin.contact import router as admin_contact_router
 from app.routes.admin.contact_info import router as admin_contact_info_router
+from app.routes.admin.dashboard import router as admin_dashboard_router
 from app.routes.admin.enhancements import router as admin_enhancements_router
 from app.routes.admin.faqs import router as admin_faqs_router
 from app.routes.admin.gallery import router as admin_gallery_router
@@ -90,6 +91,7 @@ app.include_router(faqs_router)
 app.include_router(enhancements_router)
 
 # Admin routes
+app.include_router(admin_dashboard_router)
 app.include_router(admin_packages_router)
 app.include_router(admin_themes_router)
 app.include_router(admin_testimonials_router)
