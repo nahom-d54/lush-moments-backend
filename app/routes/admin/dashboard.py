@@ -1,5 +1,4 @@
 from typing import Any, Dict
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -20,12 +19,13 @@ from app.models import (
     User,
 )
 from app.models.event_booking import BookingStatus
+from app.schemas.dashboard import DashboardStatsResponse
 from app.utils.auth import get_current_admin
 
 router = APIRouter(prefix="/admin/dashboard", tags=["Admin Dashboard"])
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
