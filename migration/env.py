@@ -7,9 +7,26 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.database import Base
-from app.models import *  # User, Package, PackageEnhancement, PackageItem, Theme  # noqa: F401
 
+from app.models import (
+    FAQ,  # User, Package, PackageEnhancement, PackageItem, Theme  # noqa: F401
+    BookingEnhancement,
+    ChatMessage,
+    ContactInfo,
+    ContactMessage,
+    EventBooking,
+    GalleryCategory,
+    GalleryItem,
+    Package,
+    PackageEnhancement,
+    PackageItem,
+    Session,
+    Testimonial,
+    Theme,
+    Translation,
+    User,
+)
+from app.database import Base
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
