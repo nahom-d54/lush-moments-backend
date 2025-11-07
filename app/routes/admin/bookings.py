@@ -15,6 +15,7 @@ router = APIRouter(prefix="/admin/bookings", tags=["Bookings"])
 
 
 @router.get("/", response_model=List[EventBookingSchema])
+@router.get("", response_model=List[EventBookingSchema])
 async def get_all_bookings(
     skip: int = 0,
     limit: int = 50,
@@ -39,6 +40,7 @@ async def get_all_bookings(
 
 
 @router.post("/", response_model=EventBookingSchema)
+@router.post("", response_model=EventBookingSchema)
 async def create_booking(
     booking: EventBookingCreate,
     db: AsyncSession = Depends(get_db),
@@ -52,6 +54,7 @@ async def create_booking(
 
 
 @router.get("/{booking_id}", response_model=EventBookingSchema)
+@router.get("/{booking_id}/", response_model=EventBookingSchema)
 async def get_booking(
     booking_id: int,
     db: AsyncSession = Depends(get_db),
@@ -65,6 +68,7 @@ async def get_booking(
 
 
 @router.patch("/{booking_id}", response_model=EventBookingSchema)
+@router.patch("/{booking_id}/", response_model=EventBookingSchema)
 async def update_booking(
     booking_id: int,
     update_data: EventBookingUpdate,
@@ -89,6 +93,7 @@ async def update_booking(
 
 
 @router.delete("/{booking_id}")
+@router.delete("/{booking_id}/")
 async def delete_booking(
     booking_id: int,
     db: AsyncSession = Depends(get_db),

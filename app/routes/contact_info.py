@@ -11,6 +11,7 @@ from app.schemas.contact_info import (
 router = APIRouter(prefix="/contact-info", tags=["Contact Info"])
 
 
+@router.get("", response_model=ContactInfoSchema)
 @router.get("/", response_model=ContactInfoSchema)
 async def get_contact_info(db: AsyncSession = Depends(get_db)):
     """

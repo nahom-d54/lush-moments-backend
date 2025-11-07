@@ -14,6 +14,7 @@ router = APIRouter(prefix="/themes", tags=["Themes"])
 
 
 @router.get("/", response_model=List[ThemeSchema])
+@router.get("", response_model=List[ThemeSchema])
 async def get_themes(
     db: AsyncSession = Depends(get_db),
     lang: Optional[str] = Query(

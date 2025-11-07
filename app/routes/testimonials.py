@@ -12,6 +12,7 @@ router = APIRouter(prefix="/testimonials", tags=["Testimonials"])
 
 
 @router.get("/", response_model=List[TestimonialSchema])
+@router.get("", response_model=List[TestimonialSchema])
 async def get_testimonials(
     db: AsyncSession = Depends(get_db),
     limit: Optional[int] = Query(

@@ -16,6 +16,7 @@ router = APIRouter(prefix="/admin/contact", tags=["Contact"])
 
 
 @router.get("/messages", response_model=list[ContactMessageSchema])
+@router.get("/messages/", response_model=list[ContactMessageSchema])
 async def get_contact_messages(
     skip: int = 0,
     limit: int = 50,
@@ -43,6 +44,7 @@ async def get_contact_messages(
 
 
 @router.get("/messages/{message_id}", response_model=ContactMessageSchema)
+@router.get("/messages/{message_id}/", response_model=ContactMessageSchema)
 async def get_contact_message(
     message_id: int,
     db: AsyncSession = Depends(get_db),
@@ -61,6 +63,7 @@ async def get_contact_message(
 
 
 @router.patch("/messages/{message_id}", response_model=ContactMessageSchema)
+@router.patch("/messages/{message_id}/", response_model=ContactMessageSchema)
 async def update_contact_message(
     message_id: int,
     update_data: ContactMessageUpdate,
@@ -89,6 +92,7 @@ async def update_contact_message(
 
 
 @router.delete("/messages/{message_id}")
+@router.delete("/messages/{message_id}/")
 async def delete_contact_message(
     message_id: int,
     db: AsyncSession = Depends(get_db),

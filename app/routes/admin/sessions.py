@@ -14,6 +14,7 @@ router = APIRouter(prefix="/admin/sessions", tags=["admin sessions"])
 
 
 @router.get("/", response_model=List[SessionSchema])
+@router.get("", response_model=List[SessionSchema])
 async def get_sessions(
     db: AsyncSession = Depends(get_db), current_admin=Depends(get_current_admin)
 ):
@@ -23,6 +24,7 @@ async def get_sessions(
 
 
 @router.post("/", response_model=SessionSchema)
+@router.post("", response_model=SessionSchema)
 async def create_session(
     session: SessionCreate,
     db: AsyncSession = Depends(get_db),
@@ -36,6 +38,7 @@ async def create_session(
 
 
 @router.get("/{session_id}", response_model=SessionSchema)
+@router.get("/{session_id}/", response_model=SessionSchema)
 async def get_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
@@ -49,6 +52,7 @@ async def get_session(
 
 
 @router.put("/{session_id}", response_model=SessionSchema)
+@router.put("/{session_id}/", response_model=SessionSchema)
 async def update_session(
     session_id: str,
     session: SessionCreate,
@@ -69,6 +73,7 @@ async def update_session(
 
 
 @router.delete("/{session_id}")
+@router.delete("/{session_id}/")
 async def delete_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),

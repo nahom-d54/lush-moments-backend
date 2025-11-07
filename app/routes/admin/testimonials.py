@@ -14,6 +14,7 @@ router = APIRouter(prefix="/admin/testimonials", tags=["Testimonials"])
 
 
 @router.get("/", response_model=List[TestimonialSchema])
+@router.get("", response_model=List[TestimonialSchema])
 async def get_testimonials(
     db: AsyncSession = Depends(get_db), current_admin=Depends(get_current_admin)
 ):
@@ -23,6 +24,7 @@ async def get_testimonials(
 
 
 @router.post("/", response_model=TestimonialSchema)
+@router.post("", response_model=TestimonialSchema)
 async def create_testimonial(
     file: UploadFile | None = File(
         None, description="Upload testimonial image (optional)"
@@ -81,6 +83,7 @@ async def create_testimonial(
 
 
 @router.get("/{testimonial_id}", response_model=TestimonialSchema)
+@router.get("/{testimonial_id}/", response_model=TestimonialSchema)
 async def get_testimonial(
     testimonial_id: int,
     db: AsyncSession = Depends(get_db),
@@ -96,6 +99,7 @@ async def get_testimonial(
 
 
 @router.put("/{testimonial_id}", response_model=TestimonialSchema)
+@router.put("/{testimonial_id}/", response_model=TestimonialSchema)
 async def update_testimonial(
     testimonial_id: int,
     file: UploadFile | None = File(
@@ -172,6 +176,7 @@ async def update_testimonial(
 
 
 @router.delete("/{testimonial_id}")
+@router.delete("/{testimonial_id}/")
 async def delete_testimonial(
     testimonial_id: int,
     db: AsyncSession = Depends(get_db),

@@ -20,6 +20,7 @@ from app.schemas.gallery_item import (
 router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 
+@router.get("", response_model=GalleryItemList)
 @router.get("/", response_model=GalleryItemList)
 async def get_gallery_items(
     category: Optional[str] = None,  # Can be category slug or name
@@ -80,6 +81,7 @@ async def get_gallery_items(
 
 
 @router.get("/categories", response_model=list[GalleryCategorySchema])
+@router.get("/categories/", response_model=list[GalleryCategorySchema])
 async def get_gallery_categories(db: AsyncSession = Depends(get_db)):
     """Public endpoint: Get all active gallery categories"""
     query = (
@@ -93,6 +95,7 @@ async def get_gallery_categories(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{item_id}", response_model=GalleryItemSchema)
+@router.get("/{item_id}/", response_model=GalleryItemSchema)
 async def get_gallery_item(item_id: UUID, db: AsyncSession = Depends(get_db)):
     """Public endpoint: Get a specific gallery item"""
     result = await db.execute(

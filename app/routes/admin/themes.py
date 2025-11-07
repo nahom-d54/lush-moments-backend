@@ -17,6 +17,7 @@ router = APIRouter(prefix="/admin/themes", tags=["Themes"])
 
 
 @router.get("/", response_model=List[ThemeSchema])
+@router.get("", response_model=List[ThemeSchema])
 async def get_themes(
     db: AsyncSession = Depends(get_db), current_admin=Depends(get_current_admin)
 ):
@@ -34,6 +35,7 @@ async def get_themes(
 
 
 @router.post("/", response_model=ThemeSchema)
+@router.post("", response_model=ThemeSchema)
 async def create_theme(
     files: List[UploadFile] = File(..., description="Upload 1-10 theme images"),
     name: str = Form(...),
@@ -123,6 +125,7 @@ async def create_theme(
 
 
 @router.get("/{theme_id}", response_model=ThemeSchema)
+@router.get("/{theme_id}/", response_model=ThemeSchema)
 async def get_theme(
     theme_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -141,6 +144,7 @@ async def get_theme(
 
 
 @router.put("/{theme_id}", response_model=ThemeSchema)
+@router.put("/{theme_id}/", response_model=ThemeSchema)
 async def update_theme(
     theme_id: UUID,
     files: List[UploadFile] | None = File(
@@ -236,6 +240,7 @@ async def update_theme(
 
 
 @router.delete("/{theme_id}")
+@router.delete("/{theme_id}/")
 async def delete_theme(
     theme_id: UUID,
     db: AsyncSession = Depends(get_db),

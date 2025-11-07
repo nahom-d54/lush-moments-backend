@@ -316,6 +316,7 @@ async def websocket_chat(
         await db.close()
 
 
+@router.get("/chat/history/")
 @router.get("/chat/history")
 async def get_chat_history(
     current_user: User = Depends(get_current_user),
@@ -343,6 +344,7 @@ async def get_chat_history(
     }
 
 
+@router.get("/chat/session/")
 @router.get("/chat/session")
 async def get_user_session(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
@@ -390,6 +392,7 @@ async def get_user_session(
     }
 
 
+@router.get("/chat/status/")
 @router.get("/chat/status")
 async def get_session_status(
     current_user: User = Depends(get_current_user),

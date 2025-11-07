@@ -25,6 +25,7 @@ router = APIRouter(prefix="/admin/gallery", tags=["Gallery"])
 
 
 @router.post("/", response_model=List[GalleryItemSchema], status_code=201)
+@router.post("", response_model=List[GalleryItemSchema], status_code=201)
 async def create_gallery_items(
     files: List[UploadFile] = File(..., description="Upload 1-5 images"),
     title: str = Form(...),
@@ -139,6 +140,7 @@ async def create_gallery_items(
 
 
 @router.patch("/{item_id}", response_model=GalleryItemSchema)
+@router.patch("/{item_id}/", response_model=GalleryItemSchema)
 async def update_gallery_item(
     item_id: UUID,
     title: str | None = Form(None),
@@ -239,6 +241,7 @@ async def update_gallery_item(
 
 
 @router.delete("/{item_id}")
+@router.delete("/{item_id}/")
 async def delete_gallery_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -272,6 +275,7 @@ async def delete_gallery_item(
 
 
 @router.post("/categories", response_model=GalleryCategorySchema, status_code=201)
+@router.post("/categories/", response_model=GalleryCategorySchema, status_code=201)
 async def create_category(
     category: GalleryCategoryCreate,
     db: AsyncSession = Depends(get_db),
@@ -295,6 +299,7 @@ async def create_category(
 
 
 @router.patch("/categories/{category_id}", response_model=GalleryCategorySchema)
+@router.patch("/categories/{category_id}/", response_model=GalleryCategorySchema)
 async def update_category(
     category_id: UUID,
     category_update: GalleryCategoryUpdate,
@@ -331,6 +336,7 @@ async def update_category(
 
 
 @router.delete("/categories/{category_id}")
+@router.delete("/categories/{category_id}/")
 async def delete_category(
     category_id: UUID,
     db: AsyncSession = Depends(get_db),

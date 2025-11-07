@@ -12,6 +12,7 @@ from app.utils.email import send_contact_form_notification
 router = APIRouter(prefix="/contact", tags=["Contact"])
 
 
+@router.post("", response_model=ContactMessageResponse)
 @router.post("/", response_model=ContactMessageResponse)
 async def submit_contact_form(
     message: ContactMessageCreate, db: AsyncSession = Depends(get_db)

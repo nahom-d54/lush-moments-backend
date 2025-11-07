@@ -11,6 +11,7 @@ router = APIRouter()
 
 
 @router.post("/sessions", response_model=Session)
+@router.post("/sessions/", response_model=Session)
 async def create_session(session: SessionCreate, db: AsyncSession = Depends(get_db)):
     session_id = str(uuid.uuid4())
     db_session = SessionModel(

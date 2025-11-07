@@ -21,6 +21,7 @@ from app.utils.email import send_booking_confirmation
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
+@router.post("", response_model=EventBookingResponse)
 @router.post("/", response_model=EventBookingResponse)
 async def create_booking(
     booking: EventBookingCreate,
@@ -101,6 +102,7 @@ async def create_booking(
     )
 
 
+@router.post("", response_model=list[EventBooking])
 @router.get("/", response_model=list[EventBooking])
 async def get_user_bookings(
     skip: int = 0,
@@ -155,6 +157,7 @@ async def get_user_bookings(
     return booking_list
 
 
+@router.post("/{booking_id}/", response_model=EventBooking)
 @router.get("/{booking_id}", response_model=EventBooking)
 async def get_booking(
     booking_id: str,
@@ -206,6 +209,7 @@ async def get_booking(
     )
 
 
+@router.put("/{booking_id}/", response_model=EventBooking)
 @router.put("/{booking_id}", response_model=EventBooking)
 async def update_booking(
     booking_id: str,

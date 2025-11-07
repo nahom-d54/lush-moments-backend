@@ -21,6 +21,7 @@ router = APIRouter(prefix="/packages", tags=["Packages"])
 
 
 @router.get("/", response_model=List[PackageSchema])
+@router.get("", response_model=List[PackageSchema])
 async def get_packages(
     db: AsyncSession = Depends(get_db),
     lang: Optional[str] = Query(
@@ -62,6 +63,7 @@ async def get_packages(
 
 
 @router.get("/{package_id}", response_model=PackageSchema)
+@router.get("/{package_id}/", response_model=PackageSchema)
 async def get_package(
     package_id: int,
     db: AsyncSession = Depends(get_db),

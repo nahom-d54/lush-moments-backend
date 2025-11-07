@@ -17,6 +17,7 @@ router = APIRouter(prefix="/admin/contact-info", tags=["Contact Info"])
 
 
 @router.post("/", response_model=ContactInfoSchema)
+@router.post("", response_model=ContactInfoSchema)
 async def create_contact_info(
     info: ContactInfoCreate,
     db: AsyncSession = Depends(get_db),
@@ -56,6 +57,7 @@ async def create_contact_info(
 
 
 @router.patch("/", response_model=ContactInfoSchema)
+@router.patch("", response_model=ContactInfoSchema)
 async def update_contact_info(
     update_data: ContactInfoUpdate,
     db: AsyncSession = Depends(get_db),
@@ -86,6 +88,7 @@ async def update_contact_info(
 
 
 @router.delete("/")
+@router.delete("")
 async def delete_contact_info(
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),

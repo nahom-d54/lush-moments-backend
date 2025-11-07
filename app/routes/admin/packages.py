@@ -16,6 +16,7 @@ router = APIRouter(prefix="/admin/packages", tags=["Packages"])
 
 
 @router.get("/", response_model=List[PackageSchema])
+@router.get("", response_model=List[PackageSchema])
 async def get_packages(
     db: AsyncSession = Depends(get_db), current_admin=Depends(get_current_admin)
 ):
@@ -29,6 +30,7 @@ async def get_packages(
 
 
 @router.post("/", response_model=PackageSchema)
+@router.post("", response_model=PackageSchema)
 async def create_package(
     package: PackageCreate,
     db: AsyncSession = Depends(get_db),
@@ -67,6 +69,7 @@ async def create_package(
 
 
 @router.get("/{package_id}", response_model=PackageSchema)
+@router.get("/{package_id}/", response_model=PackageSchema)
 async def get_package(
     package_id: int,
     db: AsyncSession = Depends(get_db),
@@ -84,6 +87,7 @@ async def get_package(
 
 
 @router.patch("/{package_id}", response_model=PackageSchema)
+@router.patch("/{package_id}/", response_model=PackageSchema)
 async def update_package(
     package_id: int,
     package: PackageUpdate,
@@ -137,6 +141,7 @@ async def update_package(
 
 
 @router.delete("/{package_id}")
+@router.delete("/{package_id}/")
 async def delete_package(
     package_id: int,
     db: AsyncSession = Depends(get_db),
